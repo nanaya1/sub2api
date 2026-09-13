@@ -15,6 +15,12 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
 	"github.com/Wei-Shaw/sub2api/ent/authidentity"
 	"github.com/Wei-Shaw/sub2api/ent/group"
+	"github.com/Wei-Shaw/sub2api/ent/oauthaccesstoken"
+	"github.com/Wei-Shaw/sub2api/ent/oauthauthorizationcode"
+	"github.com/Wei-Shaw/sub2api/ent/oauthauthorizationtransaction"
+	"github.com/Wei-Shaw/sub2api/ent/oauthconsent"
+	"github.com/Wei-Shaw/sub2api/ent/oauthmanagedapikey"
+	"github.com/Wei-Shaw/sub2api/ent/oauthrefreshtoken"
 	"github.com/Wei-Shaw/sub2api/ent/paymentorder"
 	"github.com/Wei-Shaw/sub2api/ent/pendingauthsession"
 	"github.com/Wei-Shaw/sub2api/ent/promocodeusage"
@@ -563,6 +569,96 @@ func (_c *UserCreate) AddPlatformQuotas(v ...*UserPlatformQuota) *UserCreate {
 	return _c.AddPlatformQuotaIDs(ids...)
 }
 
+// AddOauthAuthorizationTransactionIDs adds the "oauth_authorization_transactions" edge to the OAuthAuthorizationTransaction entity by IDs.
+func (_c *UserCreate) AddOauthAuthorizationTransactionIDs(ids ...int64) *UserCreate {
+	_c.mutation.AddOauthAuthorizationTransactionIDs(ids...)
+	return _c
+}
+
+// AddOauthAuthorizationTransactions adds the "oauth_authorization_transactions" edges to the OAuthAuthorizationTransaction entity.
+func (_c *UserCreate) AddOauthAuthorizationTransactions(v ...*OAuthAuthorizationTransaction) *UserCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddOauthAuthorizationTransactionIDs(ids...)
+}
+
+// AddOauthAuthorizationCodeIDs adds the "oauth_authorization_codes" edge to the OAuthAuthorizationCode entity by IDs.
+func (_c *UserCreate) AddOauthAuthorizationCodeIDs(ids ...int64) *UserCreate {
+	_c.mutation.AddOauthAuthorizationCodeIDs(ids...)
+	return _c
+}
+
+// AddOauthAuthorizationCodes adds the "oauth_authorization_codes" edges to the OAuthAuthorizationCode entity.
+func (_c *UserCreate) AddOauthAuthorizationCodes(v ...*OAuthAuthorizationCode) *UserCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddOauthAuthorizationCodeIDs(ids...)
+}
+
+// AddOauthConsentIDs adds the "oauth_consents" edge to the OAuthConsent entity by IDs.
+func (_c *UserCreate) AddOauthConsentIDs(ids ...int64) *UserCreate {
+	_c.mutation.AddOauthConsentIDs(ids...)
+	return _c
+}
+
+// AddOauthConsents adds the "oauth_consents" edges to the OAuthConsent entity.
+func (_c *UserCreate) AddOauthConsents(v ...*OAuthConsent) *UserCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddOauthConsentIDs(ids...)
+}
+
+// AddOauthAccessTokenIDs adds the "oauth_access_tokens" edge to the OAuthAccessToken entity by IDs.
+func (_c *UserCreate) AddOauthAccessTokenIDs(ids ...int64) *UserCreate {
+	_c.mutation.AddOauthAccessTokenIDs(ids...)
+	return _c
+}
+
+// AddOauthAccessTokens adds the "oauth_access_tokens" edges to the OAuthAccessToken entity.
+func (_c *UserCreate) AddOauthAccessTokens(v ...*OAuthAccessToken) *UserCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddOauthAccessTokenIDs(ids...)
+}
+
+// AddOauthRefreshTokenIDs adds the "oauth_refresh_tokens" edge to the OAuthRefreshToken entity by IDs.
+func (_c *UserCreate) AddOauthRefreshTokenIDs(ids ...int64) *UserCreate {
+	_c.mutation.AddOauthRefreshTokenIDs(ids...)
+	return _c
+}
+
+// AddOauthRefreshTokens adds the "oauth_refresh_tokens" edges to the OAuthRefreshToken entity.
+func (_c *UserCreate) AddOauthRefreshTokens(v ...*OAuthRefreshToken) *UserCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddOauthRefreshTokenIDs(ids...)
+}
+
+// AddOauthManagedAPIKeyIDs adds the "oauth_managed_api_keys" edge to the OAuthManagedAPIKey entity by IDs.
+func (_c *UserCreate) AddOauthManagedAPIKeyIDs(ids ...int64) *UserCreate {
+	_c.mutation.AddOauthManagedAPIKeyIDs(ids...)
+	return _c
+}
+
+// AddOauthManagedAPIKeys adds the "oauth_managed_api_keys" edges to the OAuthManagedAPIKey entity.
+func (_c *UserCreate) AddOauthManagedAPIKeys(v ...*OAuthManagedAPIKey) *UserCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddOauthManagedAPIKeyIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_c *UserCreate) Mutation() *UserMutation {
 	return _c.mutation
@@ -1098,6 +1194,102 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(userplatformquota.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.OauthAuthorizationTransactionsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.OauthAuthorizationTransactionsTable,
+			Columns: []string{user.OauthAuthorizationTransactionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(oauthauthorizationtransaction.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.OauthAuthorizationCodesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.OauthAuthorizationCodesTable,
+			Columns: []string{user.OauthAuthorizationCodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(oauthauthorizationcode.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.OauthConsentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.OauthConsentsTable,
+			Columns: []string{user.OauthConsentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(oauthconsent.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.OauthAccessTokensIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.OauthAccessTokensTable,
+			Columns: []string{user.OauthAccessTokensColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(oauthaccesstoken.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.OauthRefreshTokensIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.OauthRefreshTokensTable,
+			Columns: []string{user.OauthRefreshTokensColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(oauthrefreshtoken.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.OauthManagedAPIKeysIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.OauthManagedAPIKeysTable,
+			Columns: []string{user.OauthManagedAPIKeysColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(oauthmanagedapikey.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

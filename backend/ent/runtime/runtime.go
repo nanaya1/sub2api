@@ -24,6 +24,13 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/group"
 	"github.com/Wei-Shaw/sub2api/ent/idempotencyrecord"
 	"github.com/Wei-Shaw/sub2api/ent/identityadoptiondecision"
+	"github.com/Wei-Shaw/sub2api/ent/oauthaccesstoken"
+	"github.com/Wei-Shaw/sub2api/ent/oauthauthorizationcode"
+	"github.com/Wei-Shaw/sub2api/ent/oauthauthorizationtransaction"
+	"github.com/Wei-Shaw/sub2api/ent/oauthclient"
+	"github.com/Wei-Shaw/sub2api/ent/oauthconsent"
+	"github.com/Wei-Shaw/sub2api/ent/oauthmanagedapikey"
+	"github.com/Wei-Shaw/sub2api/ent/oauthrefreshtoken"
 	"github.com/Wei-Shaw/sub2api/ent/paymentauditlog"
 	"github.com/Wei-Shaw/sub2api/ent/paymentorder"
 	"github.com/Wei-Shaw/sub2api/ent/paymentproviderinstance"
@@ -1285,6 +1292,393 @@ func init() {
 	identityadoptiondecisionDescDecidedAt := identityadoptiondecisionFields[4].Descriptor()
 	// identityadoptiondecision.DefaultDecidedAt holds the default value on creation for the decided_at field.
 	identityadoptiondecision.DefaultDecidedAt = identityadoptiondecisionDescDecidedAt.Default.(func() time.Time)
+	oauthaccesstokenMixin := schema.OAuthAccessToken{}.Mixin()
+	oauthaccesstokenMixinFields0 := oauthaccesstokenMixin[0].Fields()
+	_ = oauthaccesstokenMixinFields0
+	oauthaccesstokenFields := schema.OAuthAccessToken{}.Fields()
+	_ = oauthaccesstokenFields
+	// oauthaccesstokenDescCreatedAt is the schema descriptor for created_at field.
+	oauthaccesstokenDescCreatedAt := oauthaccesstokenMixinFields0[0].Descriptor()
+	// oauthaccesstoken.DefaultCreatedAt holds the default value on creation for the created_at field.
+	oauthaccesstoken.DefaultCreatedAt = oauthaccesstokenDescCreatedAt.Default.(func() time.Time)
+	// oauthaccesstokenDescUpdatedAt is the schema descriptor for updated_at field.
+	oauthaccesstokenDescUpdatedAt := oauthaccesstokenMixinFields0[1].Descriptor()
+	// oauthaccesstoken.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	oauthaccesstoken.DefaultUpdatedAt = oauthaccesstokenDescUpdatedAt.Default.(func() time.Time)
+	// oauthaccesstoken.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	oauthaccesstoken.UpdateDefaultUpdatedAt = oauthaccesstokenDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// oauthaccesstokenDescTokenHash is the schema descriptor for token_hash field.
+	oauthaccesstokenDescTokenHash := oauthaccesstokenFields[0].Descriptor()
+	// oauthaccesstoken.TokenHashValidator is a validator for the "token_hash" field. It is called by the builders before save.
+	oauthaccesstoken.TokenHashValidator = func() func(string) error {
+		validators := oauthaccesstokenDescTokenHash.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(token_hash string) error {
+			for _, fn := range fns {
+				if err := fn(token_hash); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// oauthaccesstokenDescHashKeyVersion is the schema descriptor for hash_key_version field.
+	oauthaccesstokenDescHashKeyVersion := oauthaccesstokenFields[1].Descriptor()
+	// oauthaccesstoken.DefaultHashKeyVersion holds the default value on creation for the hash_key_version field.
+	oauthaccesstoken.DefaultHashKeyVersion = oauthaccesstokenDescHashKeyVersion.Default.(int)
+	// oauthaccesstokenDescScopes is the schema descriptor for scopes field.
+	oauthaccesstokenDescScopes := oauthaccesstokenFields[3].Descriptor()
+	// oauthaccesstoken.DefaultScopes holds the default value on creation for the scopes field.
+	oauthaccesstoken.DefaultScopes = oauthaccesstokenDescScopes.Default.(func() []string)
+	oauthauthorizationcodeMixin := schema.OAuthAuthorizationCode{}.Mixin()
+	oauthauthorizationcodeMixinFields0 := oauthauthorizationcodeMixin[0].Fields()
+	_ = oauthauthorizationcodeMixinFields0
+	oauthauthorizationcodeFields := schema.OAuthAuthorizationCode{}.Fields()
+	_ = oauthauthorizationcodeFields
+	// oauthauthorizationcodeDescCreatedAt is the schema descriptor for created_at field.
+	oauthauthorizationcodeDescCreatedAt := oauthauthorizationcodeMixinFields0[0].Descriptor()
+	// oauthauthorizationcode.DefaultCreatedAt holds the default value on creation for the created_at field.
+	oauthauthorizationcode.DefaultCreatedAt = oauthauthorizationcodeDescCreatedAt.Default.(func() time.Time)
+	// oauthauthorizationcodeDescUpdatedAt is the schema descriptor for updated_at field.
+	oauthauthorizationcodeDescUpdatedAt := oauthauthorizationcodeMixinFields0[1].Descriptor()
+	// oauthauthorizationcode.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	oauthauthorizationcode.DefaultUpdatedAt = oauthauthorizationcodeDescUpdatedAt.Default.(func() time.Time)
+	// oauthauthorizationcode.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	oauthauthorizationcode.UpdateDefaultUpdatedAt = oauthauthorizationcodeDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// oauthauthorizationcodeDescCodeHash is the schema descriptor for code_hash field.
+	oauthauthorizationcodeDescCodeHash := oauthauthorizationcodeFields[0].Descriptor()
+	// oauthauthorizationcode.CodeHashValidator is a validator for the "code_hash" field. It is called by the builders before save.
+	oauthauthorizationcode.CodeHashValidator = func() func(string) error {
+		validators := oauthauthorizationcodeDescCodeHash.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(code_hash string) error {
+			for _, fn := range fns {
+				if err := fn(code_hash); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// oauthauthorizationcodeDescRedirectURI is the schema descriptor for redirect_uri field.
+	oauthauthorizationcodeDescRedirectURI := oauthauthorizationcodeFields[1].Descriptor()
+	// oauthauthorizationcode.RedirectURIValidator is a validator for the "redirect_uri" field. It is called by the builders before save.
+	oauthauthorizationcode.RedirectURIValidator = oauthauthorizationcodeDescRedirectURI.Validators[0].(func(string) error)
+	// oauthauthorizationcodeDescScopes is the schema descriptor for scopes field.
+	oauthauthorizationcodeDescScopes := oauthauthorizationcodeFields[2].Descriptor()
+	// oauthauthorizationcode.DefaultScopes holds the default value on creation for the scopes field.
+	oauthauthorizationcode.DefaultScopes = oauthauthorizationcodeDescScopes.Default.(func() []string)
+	// oauthauthorizationcodeDescCodeChallenge is the schema descriptor for code_challenge field.
+	oauthauthorizationcodeDescCodeChallenge := oauthauthorizationcodeFields[3].Descriptor()
+	// oauthauthorizationcode.CodeChallengeValidator is a validator for the "code_challenge" field. It is called by the builders before save.
+	oauthauthorizationcode.CodeChallengeValidator = oauthauthorizationcodeDescCodeChallenge.Validators[0].(func(string) error)
+	// oauthauthorizationcodeDescCodeChallengeMethod is the schema descriptor for code_challenge_method field.
+	oauthauthorizationcodeDescCodeChallengeMethod := oauthauthorizationcodeFields[4].Descriptor()
+	// oauthauthorizationcode.CodeChallengeMethodValidator is a validator for the "code_challenge_method" field. It is called by the builders before save.
+	oauthauthorizationcode.CodeChallengeMethodValidator = func() func(string) error {
+		validators := oauthauthorizationcodeDescCodeChallengeMethod.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+			validators[2].(func(string) error),
+		}
+		return func(code_challenge_method string) error {
+			for _, fn := range fns {
+				if err := fn(code_challenge_method); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// oauthauthorizationcodeDescHashKeyVersion is the schema descriptor for hash_key_version field.
+	oauthauthorizationcodeDescHashKeyVersion := oauthauthorizationcodeFields[5].Descriptor()
+	// oauthauthorizationcode.DefaultHashKeyVersion holds the default value on creation for the hash_key_version field.
+	oauthauthorizationcode.DefaultHashKeyVersion = oauthauthorizationcodeDescHashKeyVersion.Default.(int)
+	oauthauthorizationtransactionMixin := schema.OAuthAuthorizationTransaction{}.Mixin()
+	oauthauthorizationtransactionMixinFields0 := oauthauthorizationtransactionMixin[0].Fields()
+	_ = oauthauthorizationtransactionMixinFields0
+	oauthauthorizationtransactionFields := schema.OAuthAuthorizationTransaction{}.Fields()
+	_ = oauthauthorizationtransactionFields
+	// oauthauthorizationtransactionDescCreatedAt is the schema descriptor for created_at field.
+	oauthauthorizationtransactionDescCreatedAt := oauthauthorizationtransactionMixinFields0[0].Descriptor()
+	// oauthauthorizationtransaction.DefaultCreatedAt holds the default value on creation for the created_at field.
+	oauthauthorizationtransaction.DefaultCreatedAt = oauthauthorizationtransactionDescCreatedAt.Default.(func() time.Time)
+	// oauthauthorizationtransactionDescUpdatedAt is the schema descriptor for updated_at field.
+	oauthauthorizationtransactionDescUpdatedAt := oauthauthorizationtransactionMixinFields0[1].Descriptor()
+	// oauthauthorizationtransaction.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	oauthauthorizationtransaction.DefaultUpdatedAt = oauthauthorizationtransactionDescUpdatedAt.Default.(func() time.Time)
+	// oauthauthorizationtransaction.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	oauthauthorizationtransaction.UpdateDefaultUpdatedAt = oauthauthorizationtransactionDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// oauthauthorizationtransactionDescTransactionID is the schema descriptor for transaction_id field.
+	oauthauthorizationtransactionDescTransactionID := oauthauthorizationtransactionFields[0].Descriptor()
+	// oauthauthorizationtransaction.TransactionIDValidator is a validator for the "transaction_id" field. It is called by the builders before save.
+	oauthauthorizationtransaction.TransactionIDValidator = func() func(string) error {
+		validators := oauthauthorizationtransactionDescTransactionID.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(transaction_id string) error {
+			for _, fn := range fns {
+				if err := fn(transaction_id); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// oauthauthorizationtransactionDescRedirectURI is the schema descriptor for redirect_uri field.
+	oauthauthorizationtransactionDescRedirectURI := oauthauthorizationtransactionFields[1].Descriptor()
+	// oauthauthorizationtransaction.RedirectURIValidator is a validator for the "redirect_uri" field. It is called by the builders before save.
+	oauthauthorizationtransaction.RedirectURIValidator = oauthauthorizationtransactionDescRedirectURI.Validators[0].(func(string) error)
+	// oauthauthorizationtransactionDescRequestedScopes is the schema descriptor for requested_scopes field.
+	oauthauthorizationtransactionDescRequestedScopes := oauthauthorizationtransactionFields[2].Descriptor()
+	// oauthauthorizationtransaction.DefaultRequestedScopes holds the default value on creation for the requested_scopes field.
+	oauthauthorizationtransaction.DefaultRequestedScopes = oauthauthorizationtransactionDescRequestedScopes.Default.(func() []string)
+	// oauthauthorizationtransactionDescState is the schema descriptor for state field.
+	oauthauthorizationtransactionDescState := oauthauthorizationtransactionFields[3].Descriptor()
+	// oauthauthorizationtransaction.StateValidator is a validator for the "state" field. It is called by the builders before save.
+	oauthauthorizationtransaction.StateValidator = oauthauthorizationtransactionDescState.Validators[0].(func(string) error)
+	// oauthauthorizationtransactionDescCodeChallenge is the schema descriptor for code_challenge field.
+	oauthauthorizationtransactionDescCodeChallenge := oauthauthorizationtransactionFields[4].Descriptor()
+	// oauthauthorizationtransaction.CodeChallengeValidator is a validator for the "code_challenge" field. It is called by the builders before save.
+	oauthauthorizationtransaction.CodeChallengeValidator = oauthauthorizationtransactionDescCodeChallenge.Validators[0].(func(string) error)
+	// oauthauthorizationtransactionDescCodeChallengeMethod is the schema descriptor for code_challenge_method field.
+	oauthauthorizationtransactionDescCodeChallengeMethod := oauthauthorizationtransactionFields[5].Descriptor()
+	// oauthauthorizationtransaction.CodeChallengeMethodValidator is a validator for the "code_challenge_method" field. It is called by the builders before save.
+	oauthauthorizationtransaction.CodeChallengeMethodValidator = func() func(string) error {
+		validators := oauthauthorizationtransactionDescCodeChallengeMethod.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+			validators[2].(func(string) error),
+		}
+		return func(code_challenge_method string) error {
+			for _, fn := range fns {
+				if err := fn(code_challenge_method); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// oauthauthorizationtransactionDescBrowserSessionHash is the schema descriptor for browser_session_hash field.
+	oauthauthorizationtransactionDescBrowserSessionHash := oauthauthorizationtransactionFields[6].Descriptor()
+	// oauthauthorizationtransaction.BrowserSessionHashValidator is a validator for the "browser_session_hash" field. It is called by the builders before save.
+	oauthauthorizationtransaction.BrowserSessionHashValidator = oauthauthorizationtransactionDescBrowserSessionHash.Validators[0].(func(string) error)
+	// oauthauthorizationtransactionDescCsrfTokenHash is the schema descriptor for csrf_token_hash field.
+	oauthauthorizationtransactionDescCsrfTokenHash := oauthauthorizationtransactionFields[7].Descriptor()
+	// oauthauthorizationtransaction.CsrfTokenHashValidator is a validator for the "csrf_token_hash" field. It is called by the builders before save.
+	oauthauthorizationtransaction.CsrfTokenHashValidator = oauthauthorizationtransactionDescCsrfTokenHash.Validators[0].(func(string) error)
+	// oauthauthorizationtransactionDescStatus is the schema descriptor for status field.
+	oauthauthorizationtransactionDescStatus := oauthauthorizationtransactionFields[9].Descriptor()
+	// oauthauthorizationtransaction.DefaultStatus holds the default value on creation for the status field.
+	oauthauthorizationtransaction.DefaultStatus = oauthauthorizationtransactionDescStatus.Default.(string)
+	// oauthauthorizationtransaction.StatusValidator is a validator for the "status" field. It is called by the builders before save.
+	oauthauthorizationtransaction.StatusValidator = func() func(string) error {
+		validators := oauthauthorizationtransactionDescStatus.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(status string) error {
+			for _, fn := range fns {
+				if err := fn(status); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	oauthclientMixin := schema.OAuthClient{}.Mixin()
+	oauthclientMixinFields0 := oauthclientMixin[0].Fields()
+	_ = oauthclientMixinFields0
+	oauthclientFields := schema.OAuthClient{}.Fields()
+	_ = oauthclientFields
+	// oauthclientDescCreatedAt is the schema descriptor for created_at field.
+	oauthclientDescCreatedAt := oauthclientMixinFields0[0].Descriptor()
+	// oauthclient.DefaultCreatedAt holds the default value on creation for the created_at field.
+	oauthclient.DefaultCreatedAt = oauthclientDescCreatedAt.Default.(func() time.Time)
+	// oauthclientDescUpdatedAt is the schema descriptor for updated_at field.
+	oauthclientDescUpdatedAt := oauthclientMixinFields0[1].Descriptor()
+	// oauthclient.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	oauthclient.DefaultUpdatedAt = oauthclientDescUpdatedAt.Default.(func() time.Time)
+	// oauthclient.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	oauthclient.UpdateDefaultUpdatedAt = oauthclientDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// oauthclientDescClientID is the schema descriptor for client_id field.
+	oauthclientDescClientID := oauthclientFields[0].Descriptor()
+	// oauthclient.ClientIDValidator is a validator for the "client_id" field. It is called by the builders before save.
+	oauthclient.ClientIDValidator = func() func(string) error {
+		validators := oauthclientDescClientID.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(client_id string) error {
+			for _, fn := range fns {
+				if err := fn(client_id); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// oauthclientDescName is the schema descriptor for name field.
+	oauthclientDescName := oauthclientFields[1].Descriptor()
+	// oauthclient.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	oauthclient.NameValidator = func() func(string) error {
+		validators := oauthclientDescName.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(name string) error {
+			for _, fn := range fns {
+				if err := fn(name); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// oauthclientDescClientType is the schema descriptor for client_type field.
+	oauthclientDescClientType := oauthclientFields[2].Descriptor()
+	// oauthclient.DefaultClientType holds the default value on creation for the client_type field.
+	oauthclient.DefaultClientType = oauthclientDescClientType.Default.(string)
+	// oauthclient.ClientTypeValidator is a validator for the "client_type" field. It is called by the builders before save.
+	oauthclient.ClientTypeValidator = func() func(string) error {
+		validators := oauthclientDescClientType.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(client_type string) error {
+			for _, fn := range fns {
+				if err := fn(client_type); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// oauthclientDescRedirectUris is the schema descriptor for redirect_uris field.
+	oauthclientDescRedirectUris := oauthclientFields[3].Descriptor()
+	// oauthclient.DefaultRedirectUris holds the default value on creation for the redirect_uris field.
+	oauthclient.DefaultRedirectUris = oauthclientDescRedirectUris.Default.(func() []string)
+	// oauthclientDescAllowedGrantTypes is the schema descriptor for allowed_grant_types field.
+	oauthclientDescAllowedGrantTypes := oauthclientFields[4].Descriptor()
+	// oauthclient.DefaultAllowedGrantTypes holds the default value on creation for the allowed_grant_types field.
+	oauthclient.DefaultAllowedGrantTypes = oauthclientDescAllowedGrantTypes.Default.(func() []string)
+	// oauthclientDescAllowedScopes is the schema descriptor for allowed_scopes field.
+	oauthclientDescAllowedScopes := oauthclientFields[5].Descriptor()
+	// oauthclient.DefaultAllowedScopes holds the default value on creation for the allowed_scopes field.
+	oauthclient.DefaultAllowedScopes = oauthclientDescAllowedScopes.Default.(func() []string)
+	// oauthclientDescRequirePkce is the schema descriptor for require_pkce field.
+	oauthclientDescRequirePkce := oauthclientFields[6].Descriptor()
+	// oauthclient.DefaultRequirePkce holds the default value on creation for the require_pkce field.
+	oauthclient.DefaultRequirePkce = oauthclientDescRequirePkce.Default.(bool)
+	// oauthclientDescStatus is the schema descriptor for status field.
+	oauthclientDescStatus := oauthclientFields[7].Descriptor()
+	// oauthclient.DefaultStatus holds the default value on creation for the status field.
+	oauthclient.DefaultStatus = oauthclientDescStatus.Default.(string)
+	// oauthclient.StatusValidator is a validator for the "status" field. It is called by the builders before save.
+	oauthclient.StatusValidator = func() func(string) error {
+		validators := oauthclientDescStatus.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(status string) error {
+			for _, fn := range fns {
+				if err := fn(status); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	oauthconsentMixin := schema.OAuthConsent{}.Mixin()
+	oauthconsentMixinFields0 := oauthconsentMixin[0].Fields()
+	_ = oauthconsentMixinFields0
+	oauthconsentFields := schema.OAuthConsent{}.Fields()
+	_ = oauthconsentFields
+	// oauthconsentDescCreatedAt is the schema descriptor for created_at field.
+	oauthconsentDescCreatedAt := oauthconsentMixinFields0[0].Descriptor()
+	// oauthconsent.DefaultCreatedAt holds the default value on creation for the created_at field.
+	oauthconsent.DefaultCreatedAt = oauthconsentDescCreatedAt.Default.(func() time.Time)
+	// oauthconsentDescUpdatedAt is the schema descriptor for updated_at field.
+	oauthconsentDescUpdatedAt := oauthconsentMixinFields0[1].Descriptor()
+	// oauthconsent.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	oauthconsent.DefaultUpdatedAt = oauthconsentDescUpdatedAt.Default.(func() time.Time)
+	// oauthconsent.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	oauthconsent.UpdateDefaultUpdatedAt = oauthconsentDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// oauthconsentDescScopes is the schema descriptor for scopes field.
+	oauthconsentDescScopes := oauthconsentFields[2].Descriptor()
+	// oauthconsent.DefaultScopes holds the default value on creation for the scopes field.
+	oauthconsent.DefaultScopes = oauthconsentDescScopes.Default.(func() []string)
+	oauthmanagedapikeyMixin := schema.OAuthManagedAPIKey{}.Mixin()
+	oauthmanagedapikeyMixinFields0 := oauthmanagedapikeyMixin[0].Fields()
+	_ = oauthmanagedapikeyMixinFields0
+	oauthmanagedapikeyFields := schema.OAuthManagedAPIKey{}.Fields()
+	_ = oauthmanagedapikeyFields
+	// oauthmanagedapikeyDescCreatedAt is the schema descriptor for created_at field.
+	oauthmanagedapikeyDescCreatedAt := oauthmanagedapikeyMixinFields0[0].Descriptor()
+	// oauthmanagedapikey.DefaultCreatedAt holds the default value on creation for the created_at field.
+	oauthmanagedapikey.DefaultCreatedAt = oauthmanagedapikeyDescCreatedAt.Default.(func() time.Time)
+	// oauthmanagedapikeyDescUpdatedAt is the schema descriptor for updated_at field.
+	oauthmanagedapikeyDescUpdatedAt := oauthmanagedapikeyMixinFields0[1].Descriptor()
+	// oauthmanagedapikey.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	oauthmanagedapikey.DefaultUpdatedAt = oauthmanagedapikeyDescUpdatedAt.Default.(func() time.Time)
+	// oauthmanagedapikey.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	oauthmanagedapikey.UpdateDefaultUpdatedAt = oauthmanagedapikeyDescUpdatedAt.UpdateDefault.(func() time.Time)
+	oauthrefreshtokenMixin := schema.OAuthRefreshToken{}.Mixin()
+	oauthrefreshtokenMixinFields0 := oauthrefreshtokenMixin[0].Fields()
+	_ = oauthrefreshtokenMixinFields0
+	oauthrefreshtokenFields := schema.OAuthRefreshToken{}.Fields()
+	_ = oauthrefreshtokenFields
+	// oauthrefreshtokenDescCreatedAt is the schema descriptor for created_at field.
+	oauthrefreshtokenDescCreatedAt := oauthrefreshtokenMixinFields0[0].Descriptor()
+	// oauthrefreshtoken.DefaultCreatedAt holds the default value on creation for the created_at field.
+	oauthrefreshtoken.DefaultCreatedAt = oauthrefreshtokenDescCreatedAt.Default.(func() time.Time)
+	// oauthrefreshtokenDescUpdatedAt is the schema descriptor for updated_at field.
+	oauthrefreshtokenDescUpdatedAt := oauthrefreshtokenMixinFields0[1].Descriptor()
+	// oauthrefreshtoken.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	oauthrefreshtoken.DefaultUpdatedAt = oauthrefreshtokenDescUpdatedAt.Default.(func() time.Time)
+	// oauthrefreshtoken.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	oauthrefreshtoken.UpdateDefaultUpdatedAt = oauthrefreshtokenDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// oauthrefreshtokenDescTokenHash is the schema descriptor for token_hash field.
+	oauthrefreshtokenDescTokenHash := oauthrefreshtokenFields[0].Descriptor()
+	// oauthrefreshtoken.TokenHashValidator is a validator for the "token_hash" field. It is called by the builders before save.
+	oauthrefreshtoken.TokenHashValidator = func() func(string) error {
+		validators := oauthrefreshtokenDescTokenHash.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(token_hash string) error {
+			for _, fn := range fns {
+				if err := fn(token_hash); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// oauthrefreshtokenDescHashKeyVersion is the schema descriptor for hash_key_version field.
+	oauthrefreshtokenDescHashKeyVersion := oauthrefreshtokenFields[1].Descriptor()
+	// oauthrefreshtoken.DefaultHashKeyVersion holds the default value on creation for the hash_key_version field.
+	oauthrefreshtoken.DefaultHashKeyVersion = oauthrefreshtokenDescHashKeyVersion.Default.(int)
+	// oauthrefreshtokenDescScopes is the schema descriptor for scopes field.
+	oauthrefreshtokenDescScopes := oauthrefreshtokenFields[5].Descriptor()
+	// oauthrefreshtoken.DefaultScopes holds the default value on creation for the scopes field.
+	oauthrefreshtoken.DefaultScopes = oauthrefreshtokenDescScopes.Default.(func() []string)
 	paymentauditlogFields := schema.PaymentAuditLog{}.Fields()
 	_ = paymentauditlogFields
 	// paymentauditlogDescOrderID is the schema descriptor for order_id field.

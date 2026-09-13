@@ -52,6 +52,20 @@ type Tx struct {
 	IdempotencyRecord *IdempotencyRecordClient
 	// IdentityAdoptionDecision is the client for interacting with the IdentityAdoptionDecision builders.
 	IdentityAdoptionDecision *IdentityAdoptionDecisionClient
+	// OAuthAccessToken is the client for interacting with the OAuthAccessToken builders.
+	OAuthAccessToken *OAuthAccessTokenClient
+	// OAuthAuthorizationCode is the client for interacting with the OAuthAuthorizationCode builders.
+	OAuthAuthorizationCode *OAuthAuthorizationCodeClient
+	// OAuthAuthorizationTransaction is the client for interacting with the OAuthAuthorizationTransaction builders.
+	OAuthAuthorizationTransaction *OAuthAuthorizationTransactionClient
+	// OAuthClient is the client for interacting with the OAuthClient builders.
+	OAuthClient *OAuthClientClient
+	// OAuthConsent is the client for interacting with the OAuthConsent builders.
+	OAuthConsent *OAuthConsentClient
+	// OAuthManagedAPIKey is the client for interacting with the OAuthManagedAPIKey builders.
+	OAuthManagedAPIKey *OAuthManagedAPIKeyClient
+	// OAuthRefreshToken is the client for interacting with the OAuthRefreshToken builders.
+	OAuthRefreshToken *OAuthRefreshTokenClient
 	// PaymentAuditLog is the client for interacting with the PaymentAuditLog builders.
 	PaymentAuditLog *PaymentAuditLogClient
 	// PaymentOrder is the client for interacting with the PaymentOrder builders.
@@ -242,6 +256,13 @@ func (tx *Tx) init() {
 	tx.Group = NewGroupClient(tx.config)
 	tx.IdempotencyRecord = NewIdempotencyRecordClient(tx.config)
 	tx.IdentityAdoptionDecision = NewIdentityAdoptionDecisionClient(tx.config)
+	tx.OAuthAccessToken = NewOAuthAccessTokenClient(tx.config)
+	tx.OAuthAuthorizationCode = NewOAuthAuthorizationCodeClient(tx.config)
+	tx.OAuthAuthorizationTransaction = NewOAuthAuthorizationTransactionClient(tx.config)
+	tx.OAuthClient = NewOAuthClientClient(tx.config)
+	tx.OAuthConsent = NewOAuthConsentClient(tx.config)
+	tx.OAuthManagedAPIKey = NewOAuthManagedAPIKeyClient(tx.config)
+	tx.OAuthRefreshToken = NewOAuthRefreshTokenClient(tx.config)
 	tx.PaymentAuditLog = NewPaymentAuditLogClient(tx.config)
 	tx.PaymentOrder = NewPaymentOrderClient(tx.config)
 	tx.PaymentProviderInstance = NewPaymentProviderInstanceClient(tx.config)

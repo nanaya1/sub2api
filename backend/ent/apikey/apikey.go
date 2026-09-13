@@ -67,6 +67,8 @@ const (
 	EdgeGroup = "group"
 	// EdgeUsageLogs holds the string denoting the usage_logs edge name in mutations.
 	EdgeUsageLogs = "usage_logs"
+	// EdgeOauthManagedAPIKeys holds the string denoting the oauth_managed_api_keys edge name in mutations.
+	EdgeOauthManagedAPIKeys = "oauth_managed_api_keys"
 	// Table holds the table name of the apikey in the database.
 	Table = "api_keys"
 	// UserTable is the table that holds the user relation/edge.
@@ -90,6 +92,13 @@ const (
 	UsageLogsInverseTable = "usage_logs"
 	// UsageLogsColumn is the table column denoting the usage_logs relation/edge.
 	UsageLogsColumn = "api_key_id"
+	// OauthManagedAPIKeysTable is the table that holds the oauth_managed_api_keys relation/edge.
+	OauthManagedAPIKeysTable = "oauth_managed_api_keys"
+	// OauthManagedAPIKeysInverseTable is the table name for the OAuthManagedAPIKey entity.
+	// It exists in this package in order to avoid circular dependency with the "oauthmanagedapikey" package.
+	OauthManagedAPIKeysInverseTable = "oauth_managed_api_keys"
+	// OauthManagedAPIKeysColumn is the table column denoting the oauth_managed_api_keys relation/edge.
+	OauthManagedAPIKeysColumn = "api_key_id"
 )
 
 // Columns holds all SQL columns for apikey fields.
@@ -310,6 +319,20 @@ func ByUsageLogs(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newUsageLogsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByOauthManagedAPIKeysCount orders the results by oauth_managed_api_keys count.
+func ByOauthManagedAPIKeysCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newOauthManagedAPIKeysStep(), opts...)
+	}
+}
+
+// ByOauthManagedAPIKeys orders the results by oauth_managed_api_keys terms.
+func ByOauthManagedAPIKeys(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newOauthManagedAPIKeysStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newUserStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -329,5 +352,12 @@ func newUsageLogsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(UsageLogsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, UsageLogsTable, UsageLogsColumn),
+	)
+}
+func newOauthManagedAPIKeysStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(OauthManagedAPIKeysInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, OauthManagedAPIKeysTable, OauthManagedAPIKeysColumn),
 	)
 }

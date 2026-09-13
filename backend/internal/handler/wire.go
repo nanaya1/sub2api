@@ -194,6 +194,12 @@ func ProvideHandlers(
 	modelPlazaHandler *ModelPlazaHandler,
 	asyncImageHandler *AsyncImageHandler,
 	batchImageHandler *BatchImageHandler,
+	oauthTokenHandler *OAuthTokenHandler,
+	oauthRevokeHandler *OAuthRevokeHandler,
+	oauthAuthorizeHandler *OAuthAuthorizeHandler,
+	oauthConsentHandler *OAuthConsentHandler,
+	oauthResourceHandler *OAuthResourceHandler,
+	oauthResumeHandler *OAuthResumeHandler,
 	_ *service.IdempotencyCoordinator,
 	_ *service.IdempotencyCleanupService,
 	_ *service.OpenAIQuotaAutoResetService,
@@ -220,11 +226,44 @@ func ProvideHandlers(
 		ModelPlaza:       modelPlazaHandler,
 		AsyncImage:       asyncImageHandler,
 		BatchImage:       batchImageHandler,
+		OAuthToken:       oauthTokenHandler,
+		OAuthRevoke:      oauthRevokeHandler,
+		OAuthAuthorize:   oauthAuthorizeHandler,
+		OAuthConsent:     oauthConsentHandler,
+		OAuthResource:    oauthResourceHandler,
+		OAuthResume:      oauthResumeHandler,
 	}
+}
+
+func ProvideOAuthTokenService(s *service.OAuthServerService) OAuthTokenService           { return s }
+func ProvideOAuthRevocationService(s *service.OAuthServerService) OAuthRevocationService { return s }
+func ProvideOAuthAuthorizeClientService(s *service.OAuthAuthorizeService) OAuthAuthorizeClientService {
+	return s
+}
+func ProvideOAuthAuthorizeHandler(c OAuthAuthorizeClientService, t *service.OAuthTransactionService) *OAuthAuthorizeHandler {
+	return NewOAuthAuthorizeHandlerWithTransactions(c, t)
+}
+func ProvideOAuthConsentHandler(repo service.OAuthServerRepository, svc *service.OAuthTransactionService) *OAuthConsentHandler {
+	return NewOAuthConsentHandler(repo, svc)
+}
+func ProvideOAuthResumeHandler(t *service.OAuthTransactionService) *OAuthResumeHandler {
+	return NewOAuthResumeHandler(t)
+}
+func ProvideOAuthResourceHandler(s *service.OAuthResourceService) *OAuthResourceHandler {
+	return NewOAuthResourceHandler(s)
 }
 
 // ProviderSet is the Wire provider set for all handlers
 var ProviderSet = wire.NewSet(
+	ProvideOAuthTokenService,
+	ProvideOAuthRevocationService,
+	ProvideOAuthAuthorizeClientService,
+	ProvideOAuthResourceHandler,
+	NewOAuthTokenHandler,
+	NewOAuthRevokeHandler,
+	ProvideOAuthAuthorizeHandler,
+	ProvideOAuthConsentHandler,
+	ProvideOAuthResumeHandler,
 	// Top-level handlers
 	NewAuthHandler,
 	NewUserHandler,

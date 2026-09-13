@@ -74,6 +74,40 @@ func (r *apiKeyRepository) Create(ctx context.Context, key *service.APIKey) erro
 	return translatePersistenceError(err, nil, service.ErrAPIKeyExists)
 }
 
+// CreateInTx creates an API key inside the provided ent transaction so the key
+// row and its oauth_managed_api_keys binding can be committed atomically.
+func (r *apiKeyRepository) CreateInTx(ctx context.Context, tx *dbent.Tx, key *service.APIKey) error {
+	builder := tx.Client().APIKey.Create().
+		SetUserID(key.UserID).
+		SetKey(key.Key).
+		SetName(key.Name).
+		SetStatus(key.Status).
+		SetNillableGroupID(key.GroupID).
+		SetNillableLastUsedAt(key.LastUsedAt).
+		SetQuota(key.Quota).
+		SetQuotaUsed(key.QuotaUsed).
+		SetNillableExpiresAt(key.ExpiresAt).
+		SetRateLimit5h(key.RateLimit5h).
+		SetRateLimit1d(key.RateLimit1d).
+		SetRateLimit7d(key.RateLimit7d)
+
+	if len(key.IPWhitelist) > 0 {
+		builder.SetIPWhitelist(key.IPWhitelist)
+	}
+	if len(key.IPBlacklist) > 0 {
+		builder.SetIPBlacklist(key.IPBlacklist)
+	}
+
+	created, err := builder.Save(ctx)
+	if err == nil {
+		key.ID = created.ID
+		key.LastUsedAt = created.LastUsedAt
+		key.CreatedAt = created.CreatedAt
+		key.UpdatedAt = created.UpdatedAt
+	}
+	return translatePersistenceError(err, nil, service.ErrAPIKeyExists)
+}
+
 func (r *apiKeyRepository) GetByID(ctx context.Context, id int64) (*service.APIKey, error) {
 	m, err := r.activeQuery().
 		Where(apikey.IDEQ(id)).

@@ -23,6 +23,18 @@ func init() {
 	gin.SetMode(gin.TestMode)
 }
 
+func TestOAuthProtocolBypassesFrontend(t *testing.T) {
+	for _, path := range []string{"/oauth2/auth", "/oauth2/token", "/oauth2/consent", "/oauth2/resume", "/oauth2/revoke"} {
+		r := gin.New()
+		r.Use(ServeEmbeddedFrontend())
+		r.GET(path, func(c *gin.Context) { c.Status(http.StatusNoContent) })
+		rec := httptest.NewRecorder()
+		r.ServeHTTP(rec, httptest.NewRequest("GET", path, nil))
+		require.Equal(t, http.StatusNoContent, rec.Code, path)
+	}
+	require.False(t, shouldBypassEmbeddedFrontend("/oauth/consent"))
+}
+
 func TestInjectSiteTitle(t *testing.T) {
 	t.Run("replaces_title_with_site_name", func(t *testing.T) {
 		html := []byte(`<html><head><title>Sub2API - AI API Gateway</title></head><body></body></html>`)

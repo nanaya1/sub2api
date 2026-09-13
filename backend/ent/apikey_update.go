@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
 	"github.com/Wei-Shaw/sub2api/ent/group"
+	"github.com/Wei-Shaw/sub2api/ent/oauthmanagedapikey"
 	"github.com/Wei-Shaw/sub2api/ent/predicate"
 	"github.com/Wei-Shaw/sub2api/ent/usagelog"
 	"github.com/Wei-Shaw/sub2api/ent/user"
@@ -463,6 +464,21 @@ func (_u *APIKeyUpdate) AddUsageLogs(v ...*UsageLog) *APIKeyUpdate {
 	return _u.AddUsageLogIDs(ids...)
 }
 
+// AddOauthManagedAPIKeyIDs adds the "oauth_managed_api_keys" edge to the OAuthManagedAPIKey entity by IDs.
+func (_u *APIKeyUpdate) AddOauthManagedAPIKeyIDs(ids ...int64) *APIKeyUpdate {
+	_u.mutation.AddOauthManagedAPIKeyIDs(ids...)
+	return _u
+}
+
+// AddOauthManagedAPIKeys adds the "oauth_managed_api_keys" edges to the OAuthManagedAPIKey entity.
+func (_u *APIKeyUpdate) AddOauthManagedAPIKeys(v ...*OAuthManagedAPIKey) *APIKeyUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddOauthManagedAPIKeyIDs(ids...)
+}
+
 // Mutation returns the APIKeyMutation object of the builder.
 func (_u *APIKeyUpdate) Mutation() *APIKeyMutation {
 	return _u.mutation
@@ -499,6 +515,27 @@ func (_u *APIKeyUpdate) RemoveUsageLogs(v ...*UsageLog) *APIKeyUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveUsageLogIDs(ids...)
+}
+
+// ClearOauthManagedAPIKeys clears all "oauth_managed_api_keys" edges to the OAuthManagedAPIKey entity.
+func (_u *APIKeyUpdate) ClearOauthManagedAPIKeys() *APIKeyUpdate {
+	_u.mutation.ClearOauthManagedAPIKeys()
+	return _u
+}
+
+// RemoveOauthManagedAPIKeyIDs removes the "oauth_managed_api_keys" edge to OAuthManagedAPIKey entities by IDs.
+func (_u *APIKeyUpdate) RemoveOauthManagedAPIKeyIDs(ids ...int64) *APIKeyUpdate {
+	_u.mutation.RemoveOauthManagedAPIKeyIDs(ids...)
+	return _u
+}
+
+// RemoveOauthManagedAPIKeys removes "oauth_managed_api_keys" edges to OAuthManagedAPIKey entities.
+func (_u *APIKeyUpdate) RemoveOauthManagedAPIKeys(v ...*OAuthManagedAPIKey) *APIKeyUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveOauthManagedAPIKeyIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -792,6 +829,51 @@ func (_u *APIKeyUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.OauthManagedAPIKeysCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.OauthManagedAPIKeysTable,
+			Columns: []string{apikey.OauthManagedAPIKeysColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(oauthmanagedapikey.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedOauthManagedAPIKeysIDs(); len(nodes) > 0 && !_u.mutation.OauthManagedAPIKeysCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.OauthManagedAPIKeysTable,
+			Columns: []string{apikey.OauthManagedAPIKeysColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(oauthmanagedapikey.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.OauthManagedAPIKeysIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.OauthManagedAPIKeysTable,
+			Columns: []string{apikey.OauthManagedAPIKeysColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(oauthmanagedapikey.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -1250,6 +1332,21 @@ func (_u *APIKeyUpdateOne) AddUsageLogs(v ...*UsageLog) *APIKeyUpdateOne {
 	return _u.AddUsageLogIDs(ids...)
 }
 
+// AddOauthManagedAPIKeyIDs adds the "oauth_managed_api_keys" edge to the OAuthManagedAPIKey entity by IDs.
+func (_u *APIKeyUpdateOne) AddOauthManagedAPIKeyIDs(ids ...int64) *APIKeyUpdateOne {
+	_u.mutation.AddOauthManagedAPIKeyIDs(ids...)
+	return _u
+}
+
+// AddOauthManagedAPIKeys adds the "oauth_managed_api_keys" edges to the OAuthManagedAPIKey entity.
+func (_u *APIKeyUpdateOne) AddOauthManagedAPIKeys(v ...*OAuthManagedAPIKey) *APIKeyUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddOauthManagedAPIKeyIDs(ids...)
+}
+
 // Mutation returns the APIKeyMutation object of the builder.
 func (_u *APIKeyUpdateOne) Mutation() *APIKeyMutation {
 	return _u.mutation
@@ -1286,6 +1383,27 @@ func (_u *APIKeyUpdateOne) RemoveUsageLogs(v ...*UsageLog) *APIKeyUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveUsageLogIDs(ids...)
+}
+
+// ClearOauthManagedAPIKeys clears all "oauth_managed_api_keys" edges to the OAuthManagedAPIKey entity.
+func (_u *APIKeyUpdateOne) ClearOauthManagedAPIKeys() *APIKeyUpdateOne {
+	_u.mutation.ClearOauthManagedAPIKeys()
+	return _u
+}
+
+// RemoveOauthManagedAPIKeyIDs removes the "oauth_managed_api_keys" edge to OAuthManagedAPIKey entities by IDs.
+func (_u *APIKeyUpdateOne) RemoveOauthManagedAPIKeyIDs(ids ...int64) *APIKeyUpdateOne {
+	_u.mutation.RemoveOauthManagedAPIKeyIDs(ids...)
+	return _u
+}
+
+// RemoveOauthManagedAPIKeys removes "oauth_managed_api_keys" edges to OAuthManagedAPIKey entities.
+func (_u *APIKeyUpdateOne) RemoveOauthManagedAPIKeys(v ...*OAuthManagedAPIKey) *APIKeyUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveOauthManagedAPIKeyIDs(ids...)
 }
 
 // Where appends a list predicates to the APIKeyUpdate builder.
@@ -1609,6 +1727,51 @@ func (_u *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err erro
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.OauthManagedAPIKeysCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.OauthManagedAPIKeysTable,
+			Columns: []string{apikey.OauthManagedAPIKeysColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(oauthmanagedapikey.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedOauthManagedAPIKeysIDs(); len(nodes) > 0 && !_u.mutation.OauthManagedAPIKeysCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.OauthManagedAPIKeysTable,
+			Columns: []string{apikey.OauthManagedAPIKeysColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(oauthmanagedapikey.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.OauthManagedAPIKeysIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.OauthManagedAPIKeysTable,
+			Columns: []string{apikey.OauthManagedAPIKeysColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(oauthmanagedapikey.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

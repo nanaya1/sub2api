@@ -1097,6 +1097,368 @@ var (
 			},
 		},
 	}
+	// OauthAccessTokensColumns holds the columns for the "oauth_access_tokens" table.
+	OauthAccessTokensColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "token_hash", Type: field.TypeString, Unique: true, Size: 255},
+		{Name: "hash_key_version", Type: field.TypeInt, Default: 1},
+		{Name: "family_id", Type: field.TypeUUID},
+		{Name: "scopes", Type: field.TypeJSON, SchemaType: map[string]string{"postgres": "jsonb"}},
+		{Name: "issued_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "expires_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "revoked_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "last_used_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "client_id", Type: field.TypeInt64},
+		{Name: "user_id", Type: field.TypeInt64},
+	}
+	// OauthAccessTokensTable holds the schema information for the "oauth_access_tokens" table.
+	OauthAccessTokensTable = &schema.Table{
+		Name:       "oauth_access_tokens",
+		Columns:    OauthAccessTokensColumns,
+		PrimaryKey: []*schema.Column{OauthAccessTokensColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "oauth_access_tokens_oauth_clients_oauth_access_tokens",
+				Columns:    []*schema.Column{OauthAccessTokensColumns[11]},
+				RefColumns: []*schema.Column{OauthClientsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "oauth_access_tokens_users_oauth_access_tokens",
+				Columns:    []*schema.Column{OauthAccessTokensColumns[12]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "oauthaccesstoken_token_hash",
+				Unique:  true,
+				Columns: []*schema.Column{OauthAccessTokensColumns[3]},
+			},
+			{
+				Name:    "oauthaccesstoken_user_id_client_id",
+				Unique:  false,
+				Columns: []*schema.Column{OauthAccessTokensColumns[12], OauthAccessTokensColumns[11]},
+			},
+			{
+				Name:    "oauthaccesstoken_family_id",
+				Unique:  false,
+				Columns: []*schema.Column{OauthAccessTokensColumns[5]},
+			},
+			{
+				Name:    "oauthaccesstoken_expires_at",
+				Unique:  false,
+				Columns: []*schema.Column{OauthAccessTokensColumns[8]},
+			},
+		},
+	}
+	// OauthAuthorizationCodesColumns holds the columns for the "oauth_authorization_codes" table.
+	OauthAuthorizationCodesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "code_hash", Type: field.TypeString, Unique: true, Size: 255},
+		{Name: "redirect_uri", Type: field.TypeString, SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "scopes", Type: field.TypeJSON, SchemaType: map[string]string{"postgres": "jsonb"}},
+		{Name: "code_challenge", Type: field.TypeString, SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "code_challenge_method", Type: field.TypeString, Size: 16},
+		{Name: "hash_key_version", Type: field.TypeInt, Default: 1},
+		{Name: "expires_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "consumed_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "client_id", Type: field.TypeInt64},
+		{Name: "user_id", Type: field.TypeInt64},
+	}
+	// OauthAuthorizationCodesTable holds the schema information for the "oauth_authorization_codes" table.
+	OauthAuthorizationCodesTable = &schema.Table{
+		Name:       "oauth_authorization_codes",
+		Columns:    OauthAuthorizationCodesColumns,
+		PrimaryKey: []*schema.Column{OauthAuthorizationCodesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "oauth_authorization_codes_oauth_clients_oauth_authorization_codes",
+				Columns:    []*schema.Column{OauthAuthorizationCodesColumns[11]},
+				RefColumns: []*schema.Column{OauthClientsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "oauth_authorization_codes_users_oauth_authorization_codes",
+				Columns:    []*schema.Column{OauthAuthorizationCodesColumns[12]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "oauthauthorizationcode_code_hash",
+				Unique:  true,
+				Columns: []*schema.Column{OauthAuthorizationCodesColumns[3]},
+			},
+			{
+				Name:    "oauthauthorizationcode_user_id_client_id",
+				Unique:  false,
+				Columns: []*schema.Column{OauthAuthorizationCodesColumns[12], OauthAuthorizationCodesColumns[11]},
+			},
+			{
+				Name:    "oauthauthorizationcode_expires_at",
+				Unique:  false,
+				Columns: []*schema.Column{OauthAuthorizationCodesColumns[9]},
+			},
+		},
+	}
+	// OauthAuthorizationTransactionsColumns holds the columns for the "oauth_authorization_transactions" table.
+	OauthAuthorizationTransactionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "transaction_id", Type: field.TypeString, Unique: true, Size: 128},
+		{Name: "redirect_uri", Type: field.TypeString, SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "requested_scopes", Type: field.TypeJSON, SchemaType: map[string]string{"postgres": "jsonb"}},
+		{Name: "state", Type: field.TypeString, SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "code_challenge", Type: field.TypeString, SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "code_challenge_method", Type: field.TypeString, Size: 16},
+		{Name: "browser_session_hash", Type: field.TypeString, SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "csrf_token_hash", Type: field.TypeString, SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "status", Type: field.TypeString, Size: 16, Default: "pending_login"},
+		{Name: "expires_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "consumed_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "client_id", Type: field.TypeInt64},
+		{Name: "user_id", Type: field.TypeInt64, Nullable: true},
+	}
+	// OauthAuthorizationTransactionsTable holds the schema information for the "oauth_authorization_transactions" table.
+	OauthAuthorizationTransactionsTable = &schema.Table{
+		Name:       "oauth_authorization_transactions",
+		Columns:    OauthAuthorizationTransactionsColumns,
+		PrimaryKey: []*schema.Column{OauthAuthorizationTransactionsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "oauth_authorization_transactions_oauth_clients_oauth_authorization_transactions",
+				Columns:    []*schema.Column{OauthAuthorizationTransactionsColumns[14]},
+				RefColumns: []*schema.Column{OauthClientsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "oauth_authorization_transactions_users_oauth_authorization_transactions",
+				Columns:    []*schema.Column{OauthAuthorizationTransactionsColumns[15]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "oauthauthorizationtransaction_transaction_id",
+				Unique:  true,
+				Columns: []*schema.Column{OauthAuthorizationTransactionsColumns[3]},
+			},
+			{
+				Name:    "oauthauthorizationtransaction_status_expires_at",
+				Unique:  false,
+				Columns: []*schema.Column{OauthAuthorizationTransactionsColumns[11], OauthAuthorizationTransactionsColumns[12]},
+			},
+			{
+				Name:    "oauthauthorizationtransaction_client_id_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{OauthAuthorizationTransactionsColumns[14], OauthAuthorizationTransactionsColumns[1]},
+			},
+			{
+				Name:    "oauthauthorizationtransaction_user_id_client_id",
+				Unique:  false,
+				Columns: []*schema.Column{OauthAuthorizationTransactionsColumns[15], OauthAuthorizationTransactionsColumns[14]},
+			},
+		},
+	}
+	// OauthClientsColumns holds the columns for the "oauth_clients" table.
+	OauthClientsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "client_id", Type: field.TypeString, Unique: true, Size: 128},
+		{Name: "name", Type: field.TypeString, Size: 128},
+		{Name: "client_type", Type: field.TypeString, Size: 16, Default: "public"},
+		{Name: "redirect_uris", Type: field.TypeJSON, SchemaType: map[string]string{"postgres": "jsonb"}},
+		{Name: "allowed_grant_types", Type: field.TypeJSON, SchemaType: map[string]string{"postgres": "jsonb"}},
+		{Name: "allowed_scopes", Type: field.TypeJSON, SchemaType: map[string]string{"postgres": "jsonb"}},
+		{Name: "require_pkce", Type: field.TypeBool, Default: true},
+		{Name: "status", Type: field.TypeString, Size: 16, Default: "active"},
+	}
+	// OauthClientsTable holds the schema information for the "oauth_clients" table.
+	OauthClientsTable = &schema.Table{
+		Name:       "oauth_clients",
+		Columns:    OauthClientsColumns,
+		PrimaryKey: []*schema.Column{OauthClientsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "oauthclient_client_id",
+				Unique:  true,
+				Columns: []*schema.Column{OauthClientsColumns[3]},
+			},
+			{
+				Name:    "oauthclient_status",
+				Unique:  false,
+				Columns: []*schema.Column{OauthClientsColumns[10]},
+			},
+		},
+	}
+	// OauthConsentsColumns holds the columns for the "oauth_consents" table.
+	OauthConsentsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "scopes", Type: field.TypeJSON, SchemaType: map[string]string{"postgres": "jsonb"}},
+		{Name: "revoked_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "client_id", Type: field.TypeInt64},
+		{Name: "user_id", Type: field.TypeInt64},
+	}
+	// OauthConsentsTable holds the schema information for the "oauth_consents" table.
+	OauthConsentsTable = &schema.Table{
+		Name:       "oauth_consents",
+		Columns:    OauthConsentsColumns,
+		PrimaryKey: []*schema.Column{OauthConsentsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "oauth_consents_oauth_clients_oauth_consents",
+				Columns:    []*schema.Column{OauthConsentsColumns[5]},
+				RefColumns: []*schema.Column{OauthClientsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "oauth_consents_users_oauth_consents",
+				Columns:    []*schema.Column{OauthConsentsColumns[6]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "oauthconsent_user_id_client_id",
+				Unique:  true,
+				Columns: []*schema.Column{OauthConsentsColumns[6], OauthConsentsColumns[5]},
+			},
+		},
+	}
+	// OauthManagedAPIKeysColumns holds the columns for the "oauth_managed_api_keys" table.
+	OauthManagedAPIKeysColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "revoked_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "api_key_id", Type: field.TypeInt64},
+		{Name: "client_id", Type: field.TypeInt64},
+		{Name: "user_id", Type: field.TypeInt64},
+	}
+	// OauthManagedAPIKeysTable holds the schema information for the "oauth_managed_api_keys" table.
+	OauthManagedAPIKeysTable = &schema.Table{
+		Name:       "oauth_managed_api_keys",
+		Columns:    OauthManagedAPIKeysColumns,
+		PrimaryKey: []*schema.Column{OauthManagedAPIKeysColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "oauth_managed_api_keys_api_keys_oauth_managed_api_keys",
+				Columns:    []*schema.Column{OauthManagedAPIKeysColumns[4]},
+				RefColumns: []*schema.Column{APIKeysColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "oauth_managed_api_keys_oauth_clients_oauth_managed_api_keys",
+				Columns:    []*schema.Column{OauthManagedAPIKeysColumns[5]},
+				RefColumns: []*schema.Column{OauthClientsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "oauth_managed_api_keys_users_oauth_managed_api_keys",
+				Columns:    []*schema.Column{OauthManagedAPIKeysColumns[6]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "oauthmanagedapikey_user_id_client_id",
+				Unique:  true,
+				Columns: []*schema.Column{OauthManagedAPIKeysColumns[6], OauthManagedAPIKeysColumns[5]},
+			},
+			{
+				Name:    "oauthmanagedapikey_api_key_id",
+				Unique:  true,
+				Columns: []*schema.Column{OauthManagedAPIKeysColumns[4]},
+			},
+		},
+	}
+	// OauthRefreshTokensColumns holds the columns for the "oauth_refresh_tokens" table.
+	OauthRefreshTokensColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "token_hash", Type: field.TypeString, Unique: true, Size: 255},
+		{Name: "hash_key_version", Type: field.TypeInt, Default: 1},
+		{Name: "family_id", Type: field.TypeUUID},
+		{Name: "scopes", Type: field.TypeJSON, SchemaType: map[string]string{"postgres": "jsonb"}},
+		{Name: "issued_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "expires_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "idle_expires_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "last_used_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "revoked_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "client_id", Type: field.TypeInt64},
+		{Name: "parent_token_id", Type: field.TypeInt64, Nullable: true},
+		{Name: "replaced_by_token_id", Type: field.TypeInt64, Nullable: true},
+		{Name: "user_id", Type: field.TypeInt64},
+	}
+	// OauthRefreshTokensTable holds the schema information for the "oauth_refresh_tokens" table.
+	OauthRefreshTokensTable = &schema.Table{
+		Name:       "oauth_refresh_tokens",
+		Columns:    OauthRefreshTokensColumns,
+		PrimaryKey: []*schema.Column{OauthRefreshTokensColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "oauth_refresh_tokens_oauth_clients_oauth_refresh_tokens",
+				Columns:    []*schema.Column{OauthRefreshTokensColumns[12]},
+				RefColumns: []*schema.Column{OauthClientsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "oauth_refresh_tokens_oauth_refresh_tokens_child_tokens",
+				Columns:    []*schema.Column{OauthRefreshTokensColumns[13]},
+				RefColumns: []*schema.Column{OauthRefreshTokensColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "oauth_refresh_tokens_oauth_refresh_tokens_replaced_tokens",
+				Columns:    []*schema.Column{OauthRefreshTokensColumns[14]},
+				RefColumns: []*schema.Column{OauthRefreshTokensColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "oauth_refresh_tokens_users_oauth_refresh_tokens",
+				Columns:    []*schema.Column{OauthRefreshTokensColumns[15]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "oauthrefreshtoken_token_hash",
+				Unique:  true,
+				Columns: []*schema.Column{OauthRefreshTokensColumns[3]},
+			},
+			{
+				Name:    "oauthrefreshtoken_user_id_client_id",
+				Unique:  false,
+				Columns: []*schema.Column{OauthRefreshTokensColumns[15], OauthRefreshTokensColumns[12]},
+			},
+			{
+				Name:    "oauthrefreshtoken_family_id",
+				Unique:  false,
+				Columns: []*schema.Column{OauthRefreshTokensColumns[5]},
+			},
+			{
+				Name:    "oauthrefreshtoken_expires_at",
+				Unique:  false,
+				Columns: []*schema.Column{OauthRefreshTokensColumns[8]},
+			},
+		},
+	}
 	// PaymentAuditLogsColumns holds the columns for the "payment_audit_logs" table.
 	PaymentAuditLogsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
@@ -2107,6 +2469,13 @@ var (
 		GroupsTable,
 		IdempotencyRecordsTable,
 		IdentityAdoptionDecisionsTable,
+		OauthAccessTokensTable,
+		OauthAuthorizationCodesTable,
+		OauthAuthorizationTransactionsTable,
+		OauthClientsTable,
+		OauthConsentsTable,
+		OauthManagedAPIKeysTable,
+		OauthRefreshTokensTable,
 		PaymentAuditLogsTable,
 		PaymentOrdersTable,
 		PaymentProviderInstancesTable,
@@ -2203,6 +2572,42 @@ func init() {
 	IdentityAdoptionDecisionsTable.ForeignKeys[1].RefTable = PendingAuthSessionsTable
 	IdentityAdoptionDecisionsTable.Annotation = &entsql.Annotation{
 		Table: "identity_adoption_decisions",
+	}
+	OauthAccessTokensTable.ForeignKeys[0].RefTable = OauthClientsTable
+	OauthAccessTokensTable.ForeignKeys[1].RefTable = UsersTable
+	OauthAccessTokensTable.Annotation = &entsql.Annotation{
+		Table: "oauth_access_tokens",
+	}
+	OauthAuthorizationCodesTable.ForeignKeys[0].RefTable = OauthClientsTable
+	OauthAuthorizationCodesTable.ForeignKeys[1].RefTable = UsersTable
+	OauthAuthorizationCodesTable.Annotation = &entsql.Annotation{
+		Table: "oauth_authorization_codes",
+	}
+	OauthAuthorizationTransactionsTable.ForeignKeys[0].RefTable = OauthClientsTable
+	OauthAuthorizationTransactionsTable.ForeignKeys[1].RefTable = UsersTable
+	OauthAuthorizationTransactionsTable.Annotation = &entsql.Annotation{
+		Table: "oauth_authorization_transactions",
+	}
+	OauthClientsTable.Annotation = &entsql.Annotation{
+		Table: "oauth_clients",
+	}
+	OauthConsentsTable.ForeignKeys[0].RefTable = OauthClientsTable
+	OauthConsentsTable.ForeignKeys[1].RefTable = UsersTable
+	OauthConsentsTable.Annotation = &entsql.Annotation{
+		Table: "oauth_consents",
+	}
+	OauthManagedAPIKeysTable.ForeignKeys[0].RefTable = APIKeysTable
+	OauthManagedAPIKeysTable.ForeignKeys[1].RefTable = OauthClientsTable
+	OauthManagedAPIKeysTable.ForeignKeys[2].RefTable = UsersTable
+	OauthManagedAPIKeysTable.Annotation = &entsql.Annotation{
+		Table: "oauth_managed_api_keys",
+	}
+	OauthRefreshTokensTable.ForeignKeys[0].RefTable = OauthClientsTable
+	OauthRefreshTokensTable.ForeignKeys[1].RefTable = OauthRefreshTokensTable
+	OauthRefreshTokensTable.ForeignKeys[2].RefTable = OauthRefreshTokensTable
+	OauthRefreshTokensTable.ForeignKeys[3].RefTable = UsersTable
+	OauthRefreshTokensTable.Annotation = &entsql.Annotation{
+		Table: "oauth_refresh_tokens",
 	}
 	PaymentAuditLogsTable.Annotation = &entsql.Annotation{
 		Table: "payment_audit_logs",

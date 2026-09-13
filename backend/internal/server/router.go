@@ -115,6 +115,8 @@ func registerRoutes(
 ) {
 	// 通用路由（健康检查、状态等）
 	routes.RegisterCommonRoutes(r)
+	// OAuth server routes are independently protected by the feature flag.
+	routes.RegisterOAuthServerRoutes(r, h, cfg.OAuthServer, jwtAuth)
 
 	// API v1
 	v1 := r.Group("/api/v1")

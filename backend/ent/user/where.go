@@ -1699,6 +1699,144 @@ func HasPlatformQuotasWith(preds ...predicate.UserPlatformQuota) predicate.User 
 	})
 }
 
+// HasOauthAuthorizationTransactions applies the HasEdge predicate on the "oauth_authorization_transactions" edge.
+func HasOauthAuthorizationTransactions() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, OauthAuthorizationTransactionsTable, OauthAuthorizationTransactionsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasOauthAuthorizationTransactionsWith applies the HasEdge predicate on the "oauth_authorization_transactions" edge with a given conditions (other predicates).
+func HasOauthAuthorizationTransactionsWith(preds ...predicate.OAuthAuthorizationTransaction) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newOauthAuthorizationTransactionsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasOauthAuthorizationCodes applies the HasEdge predicate on the "oauth_authorization_codes" edge.
+func HasOauthAuthorizationCodes() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, OauthAuthorizationCodesTable, OauthAuthorizationCodesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasOauthAuthorizationCodesWith applies the HasEdge predicate on the "oauth_authorization_codes" edge with a given conditions (other predicates).
+func HasOauthAuthorizationCodesWith(preds ...predicate.OAuthAuthorizationCode) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newOauthAuthorizationCodesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasOauthConsents applies the HasEdge predicate on the "oauth_consents" edge.
+func HasOauthConsents() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, OauthConsentsTable, OauthConsentsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasOauthConsentsWith applies the HasEdge predicate on the "oauth_consents" edge with a given conditions (other predicates).
+func HasOauthConsentsWith(preds ...predicate.OAuthConsent) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newOauthConsentsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasOauthAccessTokens applies the HasEdge predicate on the "oauth_access_tokens" edge.
+func HasOauthAccessTokens() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, OauthAccessTokensTable, OauthAccessTokensColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasOauthAccessTokensWith applies the HasEdge predicate on the "oauth_access_tokens" edge with a given conditions (other predicates).
+func HasOauthAccessTokensWith(preds ...predicate.OAuthAccessToken) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newOauthAccessTokensStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasOauthRefreshTokens applies the HasEdge predicate on the "oauth_refresh_tokens" edge.
+func HasOauthRefreshTokens() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, OauthRefreshTokensTable, OauthRefreshTokensColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasOauthRefreshTokensWith applies the HasEdge predicate on the "oauth_refresh_tokens" edge with a given conditions (other predicates).
+func HasOauthRefreshTokensWith(preds ...predicate.OAuthRefreshToken) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newOauthRefreshTokensStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasOauthManagedAPIKeys applies the HasEdge predicate on the "oauth_managed_api_keys" edge.
+func HasOauthManagedAPIKeys() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, OauthManagedAPIKeysTable, OauthManagedAPIKeysColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasOauthManagedAPIKeysWith applies the HasEdge predicate on the "oauth_managed_api_keys" edge with a given conditions (other predicates).
+func HasOauthManagedAPIKeysWith(preds ...predicate.OAuthManagedAPIKey) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newOauthManagedAPIKeysStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasUserAllowedGroups applies the HasEdge predicate on the "user_allowed_groups" edge.
 func HasUserAllowedGroups() predicate.User {
 	return predicate.User(func(s *sql.Selector) {

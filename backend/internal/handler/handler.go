@@ -47,6 +47,12 @@ type AdminHandlers struct {
 
 // Handlers contains all HTTP handlers
 type Handlers struct {
+	OAuthAuthorize   *OAuthAuthorizeHandler
+	OAuthConsent     *OAuthConsentHandler
+	OAuthResume      *OAuthResumeHandler
+	OAuthToken       *OAuthTokenHandler
+	OAuthRevoke      *OAuthRevokeHandler
+	OAuthResource    *OAuthResourceHandler
 	Auth             *AuthHandler
 	User             *UserHandler
 	APIKey           *APIKeyHandler

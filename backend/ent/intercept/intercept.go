@@ -27,6 +27,13 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/group"
 	"github.com/Wei-Shaw/sub2api/ent/idempotencyrecord"
 	"github.com/Wei-Shaw/sub2api/ent/identityadoptiondecision"
+	"github.com/Wei-Shaw/sub2api/ent/oauthaccesstoken"
+	"github.com/Wei-Shaw/sub2api/ent/oauthauthorizationcode"
+	"github.com/Wei-Shaw/sub2api/ent/oauthauthorizationtransaction"
+	"github.com/Wei-Shaw/sub2api/ent/oauthclient"
+	"github.com/Wei-Shaw/sub2api/ent/oauthconsent"
+	"github.com/Wei-Shaw/sub2api/ent/oauthmanagedapikey"
+	"github.com/Wei-Shaw/sub2api/ent/oauthrefreshtoken"
 	"github.com/Wei-Shaw/sub2api/ent/paymentauditlog"
 	"github.com/Wei-Shaw/sub2api/ent/paymentorder"
 	"github.com/Wei-Shaw/sub2api/ent/paymentproviderinstance"
@@ -619,6 +626,195 @@ func (f TraverseIdentityAdoptionDecision) Traverse(ctx context.Context, q ent.Qu
 	return fmt.Errorf("unexpected query type %T. expect *ent.IdentityAdoptionDecisionQuery", q)
 }
 
+// The OAuthAccessTokenFunc type is an adapter to allow the use of ordinary function as a Querier.
+type OAuthAccessTokenFunc func(context.Context, *ent.OAuthAccessTokenQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f OAuthAccessTokenFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.OAuthAccessTokenQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.OAuthAccessTokenQuery", q)
+}
+
+// The TraverseOAuthAccessToken type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseOAuthAccessToken func(context.Context, *ent.OAuthAccessTokenQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseOAuthAccessToken) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseOAuthAccessToken) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.OAuthAccessTokenQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.OAuthAccessTokenQuery", q)
+}
+
+// The OAuthAuthorizationCodeFunc type is an adapter to allow the use of ordinary function as a Querier.
+type OAuthAuthorizationCodeFunc func(context.Context, *ent.OAuthAuthorizationCodeQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f OAuthAuthorizationCodeFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.OAuthAuthorizationCodeQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.OAuthAuthorizationCodeQuery", q)
+}
+
+// The TraverseOAuthAuthorizationCode type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseOAuthAuthorizationCode func(context.Context, *ent.OAuthAuthorizationCodeQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseOAuthAuthorizationCode) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseOAuthAuthorizationCode) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.OAuthAuthorizationCodeQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.OAuthAuthorizationCodeQuery", q)
+}
+
+// The OAuthAuthorizationTransactionFunc type is an adapter to allow the use of ordinary function as a Querier.
+type OAuthAuthorizationTransactionFunc func(context.Context, *ent.OAuthAuthorizationTransactionQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f OAuthAuthorizationTransactionFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.OAuthAuthorizationTransactionQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.OAuthAuthorizationTransactionQuery", q)
+}
+
+// The TraverseOAuthAuthorizationTransaction type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseOAuthAuthorizationTransaction func(context.Context, *ent.OAuthAuthorizationTransactionQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseOAuthAuthorizationTransaction) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseOAuthAuthorizationTransaction) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.OAuthAuthorizationTransactionQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.OAuthAuthorizationTransactionQuery", q)
+}
+
+// The OAuthClientFunc type is an adapter to allow the use of ordinary function as a Querier.
+type OAuthClientFunc func(context.Context, *ent.OAuthClientQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f OAuthClientFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.OAuthClientQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.OAuthClientQuery", q)
+}
+
+// The TraverseOAuthClient type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseOAuthClient func(context.Context, *ent.OAuthClientQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseOAuthClient) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseOAuthClient) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.OAuthClientQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.OAuthClientQuery", q)
+}
+
+// The OAuthConsentFunc type is an adapter to allow the use of ordinary function as a Querier.
+type OAuthConsentFunc func(context.Context, *ent.OAuthConsentQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f OAuthConsentFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.OAuthConsentQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.OAuthConsentQuery", q)
+}
+
+// The TraverseOAuthConsent type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseOAuthConsent func(context.Context, *ent.OAuthConsentQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseOAuthConsent) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseOAuthConsent) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.OAuthConsentQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.OAuthConsentQuery", q)
+}
+
+// The OAuthManagedAPIKeyFunc type is an adapter to allow the use of ordinary function as a Querier.
+type OAuthManagedAPIKeyFunc func(context.Context, *ent.OAuthManagedAPIKeyQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f OAuthManagedAPIKeyFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.OAuthManagedAPIKeyQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.OAuthManagedAPIKeyQuery", q)
+}
+
+// The TraverseOAuthManagedAPIKey type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseOAuthManagedAPIKey func(context.Context, *ent.OAuthManagedAPIKeyQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseOAuthManagedAPIKey) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseOAuthManagedAPIKey) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.OAuthManagedAPIKeyQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.OAuthManagedAPIKeyQuery", q)
+}
+
+// The OAuthRefreshTokenFunc type is an adapter to allow the use of ordinary function as a Querier.
+type OAuthRefreshTokenFunc func(context.Context, *ent.OAuthRefreshTokenQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f OAuthRefreshTokenFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.OAuthRefreshTokenQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.OAuthRefreshTokenQuery", q)
+}
+
+// The TraverseOAuthRefreshToken type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseOAuthRefreshToken func(context.Context, *ent.OAuthRefreshTokenQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseOAuthRefreshToken) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseOAuthRefreshToken) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.OAuthRefreshTokenQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.OAuthRefreshTokenQuery", q)
+}
+
 // The PaymentAuditLogFunc type is an adapter to allow the use of ordinary function as a Querier.
 type PaymentAuditLogFunc func(context.Context, *ent.PaymentAuditLogQuery) (ent.Value, error)
 
@@ -1200,6 +1396,20 @@ func NewQuery(q ent.Query) (Query, error) {
 		return &query[*ent.IdempotencyRecordQuery, predicate.IdempotencyRecord, idempotencyrecord.OrderOption]{typ: ent.TypeIdempotencyRecord, tq: q}, nil
 	case *ent.IdentityAdoptionDecisionQuery:
 		return &query[*ent.IdentityAdoptionDecisionQuery, predicate.IdentityAdoptionDecision, identityadoptiondecision.OrderOption]{typ: ent.TypeIdentityAdoptionDecision, tq: q}, nil
+	case *ent.OAuthAccessTokenQuery:
+		return &query[*ent.OAuthAccessTokenQuery, predicate.OAuthAccessToken, oauthaccesstoken.OrderOption]{typ: ent.TypeOAuthAccessToken, tq: q}, nil
+	case *ent.OAuthAuthorizationCodeQuery:
+		return &query[*ent.OAuthAuthorizationCodeQuery, predicate.OAuthAuthorizationCode, oauthauthorizationcode.OrderOption]{typ: ent.TypeOAuthAuthorizationCode, tq: q}, nil
+	case *ent.OAuthAuthorizationTransactionQuery:
+		return &query[*ent.OAuthAuthorizationTransactionQuery, predicate.OAuthAuthorizationTransaction, oauthauthorizationtransaction.OrderOption]{typ: ent.TypeOAuthAuthorizationTransaction, tq: q}, nil
+	case *ent.OAuthClientQuery:
+		return &query[*ent.OAuthClientQuery, predicate.OAuthClient, oauthclient.OrderOption]{typ: ent.TypeOAuthClient, tq: q}, nil
+	case *ent.OAuthConsentQuery:
+		return &query[*ent.OAuthConsentQuery, predicate.OAuthConsent, oauthconsent.OrderOption]{typ: ent.TypeOAuthConsent, tq: q}, nil
+	case *ent.OAuthManagedAPIKeyQuery:
+		return &query[*ent.OAuthManagedAPIKeyQuery, predicate.OAuthManagedAPIKey, oauthmanagedapikey.OrderOption]{typ: ent.TypeOAuthManagedAPIKey, tq: q}, nil
+	case *ent.OAuthRefreshTokenQuery:
+		return &query[*ent.OAuthRefreshTokenQuery, predicate.OAuthRefreshToken, oauthrefreshtoken.OrderOption]{typ: ent.TypeOAuthRefreshToken, tq: q}, nil
 	case *ent.PaymentAuditLogQuery:
 		return &query[*ent.PaymentAuditLogQuery, predicate.PaymentAuditLog, paymentauditlog.OrderOption]{typ: ent.TypePaymentAuditLog, tq: q}, nil
 	case *ent.PaymentOrderQuery:

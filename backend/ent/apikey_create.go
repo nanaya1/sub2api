@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
 	"github.com/Wei-Shaw/sub2api/ent/group"
+	"github.com/Wei-Shaw/sub2api/ent/oauthmanagedapikey"
 	"github.com/Wei-Shaw/sub2api/ent/usagelog"
 	"github.com/Wei-Shaw/sub2api/ent/user"
 )
@@ -332,6 +333,21 @@ func (_c *APIKeyCreate) AddUsageLogs(v ...*UsageLog) *APIKeyCreate {
 	return _c.AddUsageLogIDs(ids...)
 }
 
+// AddOauthManagedAPIKeyIDs adds the "oauth_managed_api_keys" edge to the OAuthManagedAPIKey entity by IDs.
+func (_c *APIKeyCreate) AddOauthManagedAPIKeyIDs(ids ...int64) *APIKeyCreate {
+	_c.mutation.AddOauthManagedAPIKeyIDs(ids...)
+	return _c
+}
+
+// AddOauthManagedAPIKeys adds the "oauth_managed_api_keys" edges to the OAuthManagedAPIKey entity.
+func (_c *APIKeyCreate) AddOauthManagedAPIKeys(v ...*OAuthManagedAPIKey) *APIKeyCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddOauthManagedAPIKeyIDs(ids...)
+}
+
 // Mutation returns the APIKeyMutation object of the builder.
 func (_c *APIKeyCreate) Mutation() *APIKeyMutation {
 	return _c.mutation
@@ -638,6 +654,22 @@ func (_c *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.OauthManagedAPIKeysIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.OauthManagedAPIKeysTable,
+			Columns: []string{apikey.OauthManagedAPIKeysColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(oauthmanagedapikey.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

@@ -21,6 +21,8 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
 	"github.com/dgraph-io/ristretto"
 	"golang.org/x/sync/singleflight"
+
+	dbent "github.com/Wei-Shaw/sub2api/ent"
 )
 
 var (
@@ -559,6 +561,68 @@ func (s *APIKeyService) Create(ctx context.Context, userID int64, req CreateAPIK
 	s.InvalidateAuthCacheByKey(ctx, apiKey.Key)
 	s.compileAPIKeyIPRules(apiKey)
 
+	return apiKey, nil
+}
+
+// CreateInTx creates an API key inside the provided ent transaction. It performs
+// the same validation as Create but does NOT run post-commit cache invalidation;
+// the caller must invalidate the auth cache after committing the transaction.
+// It is used by the OAuth managed-key flow so the key and its oauth_managed_api_keys
+// binding are committed atomically (no orphaned keys on binding failure).
+func (s *APIKeyService) CreateInTx(ctx context.Context, tx *dbent.Tx, userID int64, req CreateAPIKeyRequest) (*APIKey, error) {
+	if err := validateCreateAPIKeyRequest(req); err != nil {
+		return nil, err
+	}
+	if tx == nil {
+		return nil, fmt.Errorf("missing api key transaction")
+	}
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("get user: %w", err)
+	}
+	if req.GroupID != nil {
+		group, err := s.groupRepo.GetByID(ctx, *req.GroupID)
+		if err != nil {
+			return nil, fmt.Errorf("get group: %w", err)
+		}
+		if !s.canUserBindGroup(ctx, user, group) {
+			return nil, ErrGroupNotAllowed
+		}
+	}
+	if len(ip.ValidateIPPatterns(req.IPWhitelist)) > 0 || len(ip.ValidateIPPatterns(req.IPBlacklist)) > 0 {
+		return nil, ErrInvalidIPPattern
+	}
+	key, err := s.GenerateKey()
+	if err != nil {
+		return nil, fmt.Errorf("generate key: %w", err)
+	}
+	apiKey := &APIKey{
+		UserID:      userID,
+		Key:         key,
+		Name:        html.EscapeString(req.Name),
+		GroupID:     req.GroupID,
+		IPWhitelist: req.IPWhitelist,
+		IPBlacklist: req.IPBlacklist,
+		Status:      StatusActive,
+		Quota:       req.Quota,
+		QuotaUsed:   0,
+		RateLimit5h: req.RateLimit5h,
+		RateLimit1d: req.RateLimit1d,
+		RateLimit7d: req.RateLimit7d,
+	}
+	if req.ExpiresInDays != nil && *req.ExpiresInDays > 0 {
+		expiresAt := time.Now().AddDate(0, 0, *req.ExpiresInDays)
+		apiKey.ExpiresAt = &expiresAt
+	}
+	repo, ok := s.apiKeyRepo.(interface {
+		CreateInTx(context.Context, *dbent.Tx, *APIKey) error
+	})
+	if !ok {
+		return nil, fmt.Errorf("api key repository does not support transactions")
+	}
+	if err := repo.CreateInTx(ctx, tx, apiKey); err != nil {
+		return nil, fmt.Errorf("create api key: %w", err)
+	}
 	return apiKey, nil
 }
 

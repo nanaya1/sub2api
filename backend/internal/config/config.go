@@ -84,6 +84,7 @@ type Config struct {
 	DingTalk                DingTalkConnectConfig         `mapstructure:"dingtalk_connect"`
 	GitHubOAuth             EmailOAuthProviderConfig      `mapstructure:"github_oauth"`
 	GoogleOAuth             EmailOAuthProviderConfig      `mapstructure:"google_oauth"`
+	OAuthServer             OAuthServerConfig             `mapstructure:"oauth_server"`
 	Default                 DefaultConfig                 `mapstructure:"default"`
 	RateLimit               RateLimitConfig               `mapstructure:"rate_limit"`
 	Pricing                 PricingConfig                 `mapstructure:"pricing"`
@@ -357,6 +358,75 @@ type OIDCConnectConfig struct {
 	UserInfoEmailPath    string `mapstructure:"userinfo_email_path"`
 	UserInfoIDPath       string `mapstructure:"userinfo_id_path"`
 	UserInfoUsernamePath string `mapstructure:"userinfo_username_path"`
+}
+
+// OAuthServerConfig 是雪浪 OAuth Authorization Server（作为授权服务器一方）的配置。
+// 注意：它与 oidc_connect（连接外部 IdP 的 OIDC Connect）完全独立，
+// 不应把外部 IdP 的 OIDC 配置混入此结构。
+// 第一轮默认关闭，且不实现 OIDC（不签发 id_token）。
+type OAuthServerConfig struct {
+	// Enabled 功能开关，默认 false。
+	Enabled bool `mapstructure:"enabled"`
+	// Issuer 授权服务器 issuer 标识，必须是绝对 HTTP(S) URL。
+	Issuer string `mapstructure:"issuer"`
+	// ClientID 雪浪官方客户端 ID 占位，正式值确定前留空。
+	ClientID string `mapstructure:"client_id"`
+	// RedirectURI 注册到雪浪客户端的回调地址。
+	RedirectURI string `mapstructure:"redirect_uri"`
+	// AuthorizationCodeTTL 授权码有效期，默认 60s，硬上限 120s。
+	AuthorizationCodeTTL time.Duration `mapstructure:"authorization_code_ttl"`
+	// AccessTokenTTL 访问令牌有效期，默认 15m。
+	AccessTokenTTL time.Duration `mapstructure:"access_token_ttl"`
+	// RefreshTokenAbsoluteTTL 刷新令牌绝对有效期，默认 30d（720h）。
+	RefreshTokenAbsoluteTTL time.Duration `mapstructure:"refresh_token_absolute_ttl"`
+	// RefreshTokenIdleTTL 刷新令牌空闲（无使用）有效期，默认 7d（168h），不得超过绝对有效期。
+	RefreshTokenIdleTTL time.Duration `mapstructure:"refresh_token_idle_ttl"`
+	// RequirePKCES256 是否强制 PKCE S256，第一轮只允许 S256，默认 true。
+	RequirePKCES256 bool `mapstructure:"require_pkce_s256"`
+}
+
+// maxOAuthAuthorizationCodeTTL 是授权码有效期的硬上限，防止过长导致重放窗口扩大。
+const maxOAuthAuthorizationCodeTTL = 120 * time.Second
+
+// minOAuthAuthorizationCodeTTL 是授权码有效期下限，必须为至少 1s，
+// 避免亚秒级（纳秒/毫秒）有效期导致授权码在签发前即过期或重放窗口不可控。
+const minOAuthAuthorizationCodeTTL = 1 * time.Second
+
+// oauthServerRedirectURI 是雪浪 OAuth 首期（批次 0）唯一允许的回调地址。
+const oauthServerRedirectURI = "meacowork://oauth/callback"
+
+// validateOAuthServerIssuer 校验授权服务器 issuer：必须是 https 绝对 URL，
+// 且不含 userinfo / query / fragment（避免歧义与注入）。
+// 注意：它与外部 IdP 的 oidc_connect.issuer（允许 http）相互独立，
+// 因此不复用 ValidateAbsoluteHTTPURL（后者允许 http 且仅拒绝 fragment）。
+func validateOAuthServerIssuer(raw string) error {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return fmt.Errorf("issuer must not be empty")
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return err
+	}
+	if !u.IsAbs() {
+		return fmt.Errorf("issuer must be absolute")
+	}
+	if !strings.EqualFold(u.Scheme, "https") {
+		return fmt.Errorf("issuer scheme must be https, got %q", u.Scheme)
+	}
+	if strings.TrimSpace(u.Host) == "" {
+		return fmt.Errorf("issuer missing host")
+	}
+	if u.User != nil {
+		return fmt.Errorf("issuer must not contain userinfo")
+	}
+	if u.RawQuery != "" {
+		return fmt.Errorf("issuer must not contain query")
+	}
+	if u.Fragment != "" {
+		return fmt.Errorf("issuer must not contain fragment")
+	}
+	return nil
 }
 
 type DingTalkConnectConfig struct {
@@ -2139,6 +2209,18 @@ func setDefaults() {
 	viper.SetDefault("oidc_connect.userinfo_id_path", "")
 	viper.SetDefault("oidc_connect.userinfo_username_path", "")
 
+	// 雪浪 OAuth Authorization Server（授权服务器一方，独立于外部 IdP 的 oidc_connect）。
+	// 第一轮默认关闭，且不实现 OIDC（不签发 id_token）。
+	viper.SetDefault("oauth_server.enabled", false)
+	viper.SetDefault("oauth_server.issuer", "https://api.xuelanglm.com")
+	viper.SetDefault("oauth_server.client_id", "")
+	viper.SetDefault("oauth_server.redirect_uri", "meacowork://oauth/callback")
+	viper.SetDefault("oauth_server.authorization_code_ttl", 60*time.Second)
+	viper.SetDefault("oauth_server.access_token_ttl", 15*time.Minute)
+	viper.SetDefault("oauth_server.refresh_token_absolute_ttl", 720*time.Hour) // 30 天
+	viper.SetDefault("oauth_server.refresh_token_idle_ttl", 168*time.Hour)     // 7 天
+	viper.SetDefault("oauth_server.require_pkce_s256", true)
+
 	// DingTalk Connect OAuth 登录
 	viper.SetDefault("dingtalk_connect.enabled", false)
 	viper.SetDefault("dingtalk_connect.authorize_url", "https://login.dingtalk.com/oauth2/auth")
@@ -3031,6 +3113,40 @@ func (c *Config) Validate() error {
 		warnIfInsecureURL("oidc_connect.jwks_url", c.OIDC.JWKSURL)
 		warnIfInsecureURL("oidc_connect.redirect_url", c.OIDC.RedirectURL)
 		warnIfInsecureURL("oidc_connect.frontend_redirect_url", c.OIDC.FrontendRedirectURL)
+	}
+
+	// 雪浪 OAuth Authorization Server 配置校验。
+	// TTL 硬约束无论开关是否启用都生效（fail-fast）。
+	if c.OAuthServer.AuthorizationCodeTTL < minOAuthAuthorizationCodeTTL || c.OAuthServer.AuthorizationCodeTTL > maxOAuthAuthorizationCodeTTL {
+		return fmt.Errorf("oauth_server.authorization_code_ttl must be between 1s and 120s")
+	}
+	if c.OAuthServer.AccessTokenTTL <= 0 {
+		return fmt.Errorf("oauth_server.access_token_ttl must be positive")
+	}
+	if c.OAuthServer.RefreshTokenAbsoluteTTL <= 0 {
+		return fmt.Errorf("oauth_server.refresh_token_absolute_ttl must be positive")
+	}
+	if c.OAuthServer.RefreshTokenIdleTTL <= 0 || c.OAuthServer.RefreshTokenIdleTTL > c.OAuthServer.RefreshTokenAbsoluteTTL {
+		return fmt.Errorf("oauth_server.refresh_token_idle_ttl must be positive and not exceed refresh_token_absolute_ttl")
+	}
+	// access_token 有效期不得超过刷新令牌绝对有效期，否则访问令牌可能在刷新令牌之前失效，
+	// 导致无法续期。
+	if c.OAuthServer.AccessTokenTTL > c.OAuthServer.RefreshTokenAbsoluteTTL {
+		return fmt.Errorf("oauth_server.access_token_ttl must not exceed refresh_token_absolute_ttl")
+	}
+	if c.OAuthServer.Enabled {
+		if strings.TrimSpace(c.OAuthServer.ClientID) == "" {
+			return fmt.Errorf("oauth_server.client_id is required when oauth_server.enabled=true")
+		}
+		if err := validateOAuthServerIssuer(c.OAuthServer.Issuer); err != nil {
+			return fmt.Errorf("oauth_server.issuer invalid: %w", err)
+		}
+		if c.OAuthServer.RedirectURI != oauthServerRedirectURI {
+			return fmt.Errorf("oauth_server.redirect_uri must be exactly %s (first-phase fixed callback)", oauthServerRedirectURI)
+		}
+		if !c.OAuthServer.RequirePKCES256 {
+			return fmt.Errorf("oauth_server.require_pkce_s256 must be true (only S256 PKCE is allowed)")
+		}
 	}
 	if c.Billing.CircuitBreaker.Enabled {
 		if c.Billing.CircuitBreaker.FailureThreshold <= 0 {

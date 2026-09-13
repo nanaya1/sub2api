@@ -1194,6 +1194,29 @@ func HasUsageLogsWith(preds ...predicate.UsageLog) predicate.APIKey {
 	})
 }
 
+// HasOauthManagedAPIKeys applies the HasEdge predicate on the "oauth_managed_api_keys" edge.
+func HasOauthManagedAPIKeys() predicate.APIKey {
+	return predicate.APIKey(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, OauthManagedAPIKeysTable, OauthManagedAPIKeysColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasOauthManagedAPIKeysWith applies the HasEdge predicate on the "oauth_managed_api_keys" edge with a given conditions (other predicates).
+func HasOauthManagedAPIKeysWith(preds ...predicate.OAuthManagedAPIKey) predicate.APIKey {
+	return predicate.APIKey(func(s *sql.Selector) {
+		step := newOauthManagedAPIKeysStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.APIKey) predicate.APIKey {
 	return predicate.APIKey(sql.AndPredicates(predicates...))

@@ -140,6 +140,18 @@ func (User) Edges() []ent.Edge {
 			Annotations(entsql.OnDelete(entsql.Cascade)),
 		edge.To("pending_auth_sessions", PendingAuthSession.Type),
 		edge.To("platform_quotas", UserPlatformQuota.Type),
+		edge.To("oauth_authorization_transactions", OAuthAuthorizationTransaction.Type).
+			Annotations(entsql.Annotation{OnDelete: entsql.Cascade}),
+		edge.To("oauth_authorization_codes", OAuthAuthorizationCode.Type).
+			Annotations(entsql.Annotation{OnDelete: entsql.Cascade}),
+		edge.To("oauth_consents", OAuthConsent.Type).
+			Annotations(entsql.Annotation{OnDelete: entsql.Cascade}),
+		edge.To("oauth_access_tokens", OAuthAccessToken.Type).
+			Annotations(entsql.Annotation{OnDelete: entsql.Cascade}),
+		edge.To("oauth_refresh_tokens", OAuthRefreshToken.Type).
+			Annotations(entsql.Annotation{OnDelete: entsql.Cascade}),
+		edge.To("oauth_managed_api_keys", OAuthManagedAPIKey.Type).
+			Annotations(entsql.Annotation{OnDelete: entsql.Cascade}),
 	}
 }
 

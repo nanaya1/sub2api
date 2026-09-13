@@ -80,9 +80,11 @@ type APIKeyEdges struct {
 	Group *Group `json:"group,omitempty"`
 	// UsageLogs holds the value of the usage_logs edge.
 	UsageLogs []*UsageLog `json:"usage_logs,omitempty"`
+	// OauthManagedAPIKeys holds the value of the oauth_managed_api_keys edge.
+	OauthManagedAPIKeys []*OAuthManagedAPIKey `json:"oauth_managed_api_keys,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
+	loadedTypes [4]bool
 }
 
 // UserOrErr returns the User value or an error if the edge
@@ -114,6 +116,15 @@ func (e APIKeyEdges) UsageLogsOrErr() ([]*UsageLog, error) {
 		return e.UsageLogs, nil
 	}
 	return nil, &NotLoadedError{edge: "usage_logs"}
+}
+
+// OauthManagedAPIKeysOrErr returns the OauthManagedAPIKeys value or an error if the edge
+// was not loaded in eager-loading.
+func (e APIKeyEdges) OauthManagedAPIKeysOrErr() ([]*OAuthManagedAPIKey, error) {
+	if e.loadedTypes[3] {
+		return e.OauthManagedAPIKeys, nil
+	}
+	return nil, &NotLoadedError{edge: "oauth_managed_api_keys"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -327,6 +338,11 @@ func (_m *APIKey) QueryGroup() *GroupQuery {
 // QueryUsageLogs queries the "usage_logs" edge of the APIKey entity.
 func (_m *APIKey) QueryUsageLogs() *UsageLogQuery {
 	return NewAPIKeyClient(_m.config).QueryUsageLogs(_m)
+}
+
+// QueryOauthManagedAPIKeys queries the "oauth_managed_api_keys" edge of the APIKey entity.
+func (_m *APIKey) QueryOauthManagedAPIKeys() *OAuthManagedAPIKeyQuery {
+	return NewAPIKeyClient(_m.config).QueryOauthManagedAPIKeys(_m)
 }
 
 // Update returns a builder for updating this APIKey.

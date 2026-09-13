@@ -29,6 +29,12 @@ const routes: RouteRecordRaw[] = [
     }
   },
 
+  {
+    path: '/oauth/consent',
+    name: 'OAuthConsent',
+    component: () => import('@/views/auth/OAuthConsentView.vue'),
+    meta: { requiresAuth: false, title: '授权确认' }
+  },
   // ==================== Public Routes ====================
   {
     path: '/home',

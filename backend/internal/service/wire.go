@@ -17,6 +17,10 @@ import (
 	"go.uber.org/zap"
 )
 
+func ProvideOAuthResourceService(repo OAuthManagedKeyRepository, api *APIKeyService, users *UserService, entClient *dbent.Client) *OAuthResourceService {
+	return &OAuthResourceService{Managed: repo, APIKeys: api, Users: users, Ent: entClient}
+}
+
 func ProvideGrokOAuthService(proxyRepo ProxyRepository, oauthClient GrokOAuthClient, cfg *config.Config, redisClient *redis.Client) *GrokOAuthService {
 	svc := NewGrokOAuthService(proxyRepo, oauthClient, cfg)
 	// wire.go is depguard-exempt for redis; construct the Redis session store here.
@@ -819,7 +823,18 @@ func ProvideAPIKeyService(
 }
 
 // ProviderSet is the Wire provider set for all services
+func ProvideOAuthAuthorizeService(repo OAuthServerRepository) *OAuthAuthorizeService {
+	return NewOAuthAuthorizeService(repo)
+}
+
+func ProvideOAuthServerService(repo OAuthServerRepository, cfg *config.Config) (*OAuthServerService, error) {
+	return NewConfiguredOAuthServerService(repo, cfg.OAuthServer)
+}
+
 var ProviderSet = wire.NewSet(
+	ProvideOAuthServerService,
+	ProvideOAuthAuthorizeService,
+	wire.Struct(new(OAuthTransactionService), "Repo"),
 	// Core services
 	ProvideAuthService,
 	NewPasskeyService,
@@ -842,6 +857,7 @@ var ProviderSet = wire.NewSet(
 	NewAdminService,
 	NewGatewayService,
 	NewOpenAIGatewayService,
+	ProvideOAuthResourceService,
 	ProvideImageStorageSettingService,
 	ProvideImageTaskService,
 	ProvideBatchImageModelPricingResolver,

@@ -101,11 +101,23 @@ type UserEdges struct {
 	PendingAuthSessions []*PendingAuthSession `json:"pending_auth_sessions,omitempty"`
 	// PlatformQuotas holds the value of the platform_quotas edge.
 	PlatformQuotas []*UserPlatformQuota `json:"platform_quotas,omitempty"`
+	// OauthAuthorizationTransactions holds the value of the oauth_authorization_transactions edge.
+	OauthAuthorizationTransactions []*OAuthAuthorizationTransaction `json:"oauth_authorization_transactions,omitempty"`
+	// OauthAuthorizationCodes holds the value of the oauth_authorization_codes edge.
+	OauthAuthorizationCodes []*OAuthAuthorizationCode `json:"oauth_authorization_codes,omitempty"`
+	// OauthConsents holds the value of the oauth_consents edge.
+	OauthConsents []*OAuthConsent `json:"oauth_consents,omitempty"`
+	// OauthAccessTokens holds the value of the oauth_access_tokens edge.
+	OauthAccessTokens []*OAuthAccessToken `json:"oauth_access_tokens,omitempty"`
+	// OauthRefreshTokens holds the value of the oauth_refresh_tokens edge.
+	OauthRefreshTokens []*OAuthRefreshToken `json:"oauth_refresh_tokens,omitempty"`
+	// OauthManagedAPIKeys holds the value of the oauth_managed_api_keys edge.
+	OauthManagedAPIKeys []*OAuthManagedAPIKey `json:"oauth_managed_api_keys,omitempty"`
 	// UserAllowedGroups holds the value of the user_allowed_groups edge.
 	UserAllowedGroups []*UserAllowedGroup `json:"user_allowed_groups,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [14]bool
+	loadedTypes [20]bool
 }
 
 // APIKeysOrErr returns the APIKeys value or an error if the edge
@@ -225,10 +237,64 @@ func (e UserEdges) PlatformQuotasOrErr() ([]*UserPlatformQuota, error) {
 	return nil, &NotLoadedError{edge: "platform_quotas"}
 }
 
+// OauthAuthorizationTransactionsOrErr returns the OauthAuthorizationTransactions value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) OauthAuthorizationTransactionsOrErr() ([]*OAuthAuthorizationTransaction, error) {
+	if e.loadedTypes[13] {
+		return e.OauthAuthorizationTransactions, nil
+	}
+	return nil, &NotLoadedError{edge: "oauth_authorization_transactions"}
+}
+
+// OauthAuthorizationCodesOrErr returns the OauthAuthorizationCodes value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) OauthAuthorizationCodesOrErr() ([]*OAuthAuthorizationCode, error) {
+	if e.loadedTypes[14] {
+		return e.OauthAuthorizationCodes, nil
+	}
+	return nil, &NotLoadedError{edge: "oauth_authorization_codes"}
+}
+
+// OauthConsentsOrErr returns the OauthConsents value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) OauthConsentsOrErr() ([]*OAuthConsent, error) {
+	if e.loadedTypes[15] {
+		return e.OauthConsents, nil
+	}
+	return nil, &NotLoadedError{edge: "oauth_consents"}
+}
+
+// OauthAccessTokensOrErr returns the OauthAccessTokens value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) OauthAccessTokensOrErr() ([]*OAuthAccessToken, error) {
+	if e.loadedTypes[16] {
+		return e.OauthAccessTokens, nil
+	}
+	return nil, &NotLoadedError{edge: "oauth_access_tokens"}
+}
+
+// OauthRefreshTokensOrErr returns the OauthRefreshTokens value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) OauthRefreshTokensOrErr() ([]*OAuthRefreshToken, error) {
+	if e.loadedTypes[17] {
+		return e.OauthRefreshTokens, nil
+	}
+	return nil, &NotLoadedError{edge: "oauth_refresh_tokens"}
+}
+
+// OauthManagedAPIKeysOrErr returns the OauthManagedAPIKeys value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) OauthManagedAPIKeysOrErr() ([]*OAuthManagedAPIKey, error) {
+	if e.loadedTypes[18] {
+		return e.OauthManagedAPIKeys, nil
+	}
+	return nil, &NotLoadedError{edge: "oauth_managed_api_keys"}
+}
+
 // UserAllowedGroupsOrErr returns the UserAllowedGroups value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) UserAllowedGroupsOrErr() ([]*UserAllowedGroup, error) {
-	if e.loadedTypes[13] {
+	if e.loadedTypes[19] {
 		return e.UserAllowedGroups, nil
 	}
 	return nil, &NotLoadedError{edge: "user_allowed_groups"}
@@ -502,6 +568,36 @@ func (_m *User) QueryPendingAuthSessions() *PendingAuthSessionQuery {
 // QueryPlatformQuotas queries the "platform_quotas" edge of the User entity.
 func (_m *User) QueryPlatformQuotas() *UserPlatformQuotaQuery {
 	return NewUserClient(_m.config).QueryPlatformQuotas(_m)
+}
+
+// QueryOauthAuthorizationTransactions queries the "oauth_authorization_transactions" edge of the User entity.
+func (_m *User) QueryOauthAuthorizationTransactions() *OAuthAuthorizationTransactionQuery {
+	return NewUserClient(_m.config).QueryOauthAuthorizationTransactions(_m)
+}
+
+// QueryOauthAuthorizationCodes queries the "oauth_authorization_codes" edge of the User entity.
+func (_m *User) QueryOauthAuthorizationCodes() *OAuthAuthorizationCodeQuery {
+	return NewUserClient(_m.config).QueryOauthAuthorizationCodes(_m)
+}
+
+// QueryOauthConsents queries the "oauth_consents" edge of the User entity.
+func (_m *User) QueryOauthConsents() *OAuthConsentQuery {
+	return NewUserClient(_m.config).QueryOauthConsents(_m)
+}
+
+// QueryOauthAccessTokens queries the "oauth_access_tokens" edge of the User entity.
+func (_m *User) QueryOauthAccessTokens() *OAuthAccessTokenQuery {
+	return NewUserClient(_m.config).QueryOauthAccessTokens(_m)
+}
+
+// QueryOauthRefreshTokens queries the "oauth_refresh_tokens" edge of the User entity.
+func (_m *User) QueryOauthRefreshTokens() *OAuthRefreshTokenQuery {
+	return NewUserClient(_m.config).QueryOauthRefreshTokens(_m)
+}
+
+// QueryOauthManagedAPIKeys queries the "oauth_managed_api_keys" edge of the User entity.
+func (_m *User) QueryOauthManagedAPIKeys() *OAuthManagedAPIKeyQuery {
+	return NewUserClient(_m.config).QueryOauthManagedAPIKeys(_m)
 }
 
 // QueryUserAllowedGroups queries the "user_allowed_groups" edge of the User entity.

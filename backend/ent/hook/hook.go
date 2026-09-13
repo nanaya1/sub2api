@@ -237,6 +237,90 @@ func (f IdentityAdoptionDecisionFunc) Mutate(ctx context.Context, m ent.Mutation
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.IdentityAdoptionDecisionMutation", m)
 }
 
+// The OAuthAccessTokenFunc type is an adapter to allow the use of ordinary
+// function as OAuthAccessToken mutator.
+type OAuthAccessTokenFunc func(context.Context, *ent.OAuthAccessTokenMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f OAuthAccessTokenFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.OAuthAccessTokenMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.OAuthAccessTokenMutation", m)
+}
+
+// The OAuthAuthorizationCodeFunc type is an adapter to allow the use of ordinary
+// function as OAuthAuthorizationCode mutator.
+type OAuthAuthorizationCodeFunc func(context.Context, *ent.OAuthAuthorizationCodeMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f OAuthAuthorizationCodeFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.OAuthAuthorizationCodeMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.OAuthAuthorizationCodeMutation", m)
+}
+
+// The OAuthAuthorizationTransactionFunc type is an adapter to allow the use of ordinary
+// function as OAuthAuthorizationTransaction mutator.
+type OAuthAuthorizationTransactionFunc func(context.Context, *ent.OAuthAuthorizationTransactionMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f OAuthAuthorizationTransactionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.OAuthAuthorizationTransactionMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.OAuthAuthorizationTransactionMutation", m)
+}
+
+// The OAuthClientFunc type is an adapter to allow the use of ordinary
+// function as OAuthClient mutator.
+type OAuthClientFunc func(context.Context, *ent.OAuthClientMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f OAuthClientFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.OAuthClientMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.OAuthClientMutation", m)
+}
+
+// The OAuthConsentFunc type is an adapter to allow the use of ordinary
+// function as OAuthConsent mutator.
+type OAuthConsentFunc func(context.Context, *ent.OAuthConsentMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f OAuthConsentFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.OAuthConsentMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.OAuthConsentMutation", m)
+}
+
+// The OAuthManagedAPIKeyFunc type is an adapter to allow the use of ordinary
+// function as OAuthManagedAPIKey mutator.
+type OAuthManagedAPIKeyFunc func(context.Context, *ent.OAuthManagedAPIKeyMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f OAuthManagedAPIKeyFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.OAuthManagedAPIKeyMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.OAuthManagedAPIKeyMutation", m)
+}
+
+// The OAuthRefreshTokenFunc type is an adapter to allow the use of ordinary
+// function as OAuthRefreshToken mutator.
+type OAuthRefreshTokenFunc func(context.Context, *ent.OAuthRefreshTokenMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f OAuthRefreshTokenFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.OAuthRefreshTokenMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.OAuthRefreshTokenMutation", m)
+}
+
 // The PaymentAuditLogFunc type is an adapter to allow the use of ordinary
 // function as PaymentAuditLog mutator.
 type PaymentAuditLogFunc func(context.Context, *ent.PaymentAuditLogMutation) (ent.Value, error)

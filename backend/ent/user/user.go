@@ -91,6 +91,18 @@ const (
 	EdgePendingAuthSessions = "pending_auth_sessions"
 	// EdgePlatformQuotas holds the string denoting the platform_quotas edge name in mutations.
 	EdgePlatformQuotas = "platform_quotas"
+	// EdgeOauthAuthorizationTransactions holds the string denoting the oauth_authorization_transactions edge name in mutations.
+	EdgeOauthAuthorizationTransactions = "oauth_authorization_transactions"
+	// EdgeOauthAuthorizationCodes holds the string denoting the oauth_authorization_codes edge name in mutations.
+	EdgeOauthAuthorizationCodes = "oauth_authorization_codes"
+	// EdgeOauthConsents holds the string denoting the oauth_consents edge name in mutations.
+	EdgeOauthConsents = "oauth_consents"
+	// EdgeOauthAccessTokens holds the string denoting the oauth_access_tokens edge name in mutations.
+	EdgeOauthAccessTokens = "oauth_access_tokens"
+	// EdgeOauthRefreshTokens holds the string denoting the oauth_refresh_tokens edge name in mutations.
+	EdgeOauthRefreshTokens = "oauth_refresh_tokens"
+	// EdgeOauthManagedAPIKeys holds the string denoting the oauth_managed_api_keys edge name in mutations.
+	EdgeOauthManagedAPIKeys = "oauth_managed_api_keys"
 	// EdgeUserAllowedGroups holds the string denoting the user_allowed_groups edge name in mutations.
 	EdgeUserAllowedGroups = "user_allowed_groups"
 	// Table holds the table name of the user in the database.
@@ -184,6 +196,48 @@ const (
 	PlatformQuotasInverseTable = "user_platform_quotas"
 	// PlatformQuotasColumn is the table column denoting the platform_quotas relation/edge.
 	PlatformQuotasColumn = "user_id"
+	// OauthAuthorizationTransactionsTable is the table that holds the oauth_authorization_transactions relation/edge.
+	OauthAuthorizationTransactionsTable = "oauth_authorization_transactions"
+	// OauthAuthorizationTransactionsInverseTable is the table name for the OAuthAuthorizationTransaction entity.
+	// It exists in this package in order to avoid circular dependency with the "oauthauthorizationtransaction" package.
+	OauthAuthorizationTransactionsInverseTable = "oauth_authorization_transactions"
+	// OauthAuthorizationTransactionsColumn is the table column denoting the oauth_authorization_transactions relation/edge.
+	OauthAuthorizationTransactionsColumn = "user_id"
+	// OauthAuthorizationCodesTable is the table that holds the oauth_authorization_codes relation/edge.
+	OauthAuthorizationCodesTable = "oauth_authorization_codes"
+	// OauthAuthorizationCodesInverseTable is the table name for the OAuthAuthorizationCode entity.
+	// It exists in this package in order to avoid circular dependency with the "oauthauthorizationcode" package.
+	OauthAuthorizationCodesInverseTable = "oauth_authorization_codes"
+	// OauthAuthorizationCodesColumn is the table column denoting the oauth_authorization_codes relation/edge.
+	OauthAuthorizationCodesColumn = "user_id"
+	// OauthConsentsTable is the table that holds the oauth_consents relation/edge.
+	OauthConsentsTable = "oauth_consents"
+	// OauthConsentsInverseTable is the table name for the OAuthConsent entity.
+	// It exists in this package in order to avoid circular dependency with the "oauthconsent" package.
+	OauthConsentsInverseTable = "oauth_consents"
+	// OauthConsentsColumn is the table column denoting the oauth_consents relation/edge.
+	OauthConsentsColumn = "user_id"
+	// OauthAccessTokensTable is the table that holds the oauth_access_tokens relation/edge.
+	OauthAccessTokensTable = "oauth_access_tokens"
+	// OauthAccessTokensInverseTable is the table name for the OAuthAccessToken entity.
+	// It exists in this package in order to avoid circular dependency with the "oauthaccesstoken" package.
+	OauthAccessTokensInverseTable = "oauth_access_tokens"
+	// OauthAccessTokensColumn is the table column denoting the oauth_access_tokens relation/edge.
+	OauthAccessTokensColumn = "user_id"
+	// OauthRefreshTokensTable is the table that holds the oauth_refresh_tokens relation/edge.
+	OauthRefreshTokensTable = "oauth_refresh_tokens"
+	// OauthRefreshTokensInverseTable is the table name for the OAuthRefreshToken entity.
+	// It exists in this package in order to avoid circular dependency with the "oauthrefreshtoken" package.
+	OauthRefreshTokensInverseTable = "oauth_refresh_tokens"
+	// OauthRefreshTokensColumn is the table column denoting the oauth_refresh_tokens relation/edge.
+	OauthRefreshTokensColumn = "user_id"
+	// OauthManagedAPIKeysTable is the table that holds the oauth_managed_api_keys relation/edge.
+	OauthManagedAPIKeysTable = "oauth_managed_api_keys"
+	// OauthManagedAPIKeysInverseTable is the table name for the OAuthManagedAPIKey entity.
+	// It exists in this package in order to avoid circular dependency with the "oauthmanagedapikey" package.
+	OauthManagedAPIKeysInverseTable = "oauth_managed_api_keys"
+	// OauthManagedAPIKeysColumn is the table column denoting the oauth_managed_api_keys relation/edge.
+	OauthManagedAPIKeysColumn = "user_id"
 	// UserAllowedGroupsTable is the table that holds the user_allowed_groups relation/edge.
 	UserAllowedGroupsTable = "user_allowed_groups"
 	// UserAllowedGroupsInverseTable is the table name for the UserAllowedGroup entity.
@@ -612,6 +666,90 @@ func ByPlatformQuotas(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByOauthAuthorizationTransactionsCount orders the results by oauth_authorization_transactions count.
+func ByOauthAuthorizationTransactionsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newOauthAuthorizationTransactionsStep(), opts...)
+	}
+}
+
+// ByOauthAuthorizationTransactions orders the results by oauth_authorization_transactions terms.
+func ByOauthAuthorizationTransactions(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newOauthAuthorizationTransactionsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByOauthAuthorizationCodesCount orders the results by oauth_authorization_codes count.
+func ByOauthAuthorizationCodesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newOauthAuthorizationCodesStep(), opts...)
+	}
+}
+
+// ByOauthAuthorizationCodes orders the results by oauth_authorization_codes terms.
+func ByOauthAuthorizationCodes(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newOauthAuthorizationCodesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByOauthConsentsCount orders the results by oauth_consents count.
+func ByOauthConsentsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newOauthConsentsStep(), opts...)
+	}
+}
+
+// ByOauthConsents orders the results by oauth_consents terms.
+func ByOauthConsents(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newOauthConsentsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByOauthAccessTokensCount orders the results by oauth_access_tokens count.
+func ByOauthAccessTokensCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newOauthAccessTokensStep(), opts...)
+	}
+}
+
+// ByOauthAccessTokens orders the results by oauth_access_tokens terms.
+func ByOauthAccessTokens(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newOauthAccessTokensStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByOauthRefreshTokensCount orders the results by oauth_refresh_tokens count.
+func ByOauthRefreshTokensCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newOauthRefreshTokensStep(), opts...)
+	}
+}
+
+// ByOauthRefreshTokens orders the results by oauth_refresh_tokens terms.
+func ByOauthRefreshTokens(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newOauthRefreshTokensStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByOauthManagedAPIKeysCount orders the results by oauth_managed_api_keys count.
+func ByOauthManagedAPIKeysCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newOauthManagedAPIKeysStep(), opts...)
+	}
+}
+
+// ByOauthManagedAPIKeys orders the results by oauth_managed_api_keys terms.
+func ByOauthManagedAPIKeys(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newOauthManagedAPIKeysStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByUserAllowedGroupsCount orders the results by user_allowed_groups count.
 func ByUserAllowedGroupsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -714,6 +852,48 @@ func newPlatformQuotasStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(PlatformQuotasInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, PlatformQuotasTable, PlatformQuotasColumn),
+	)
+}
+func newOauthAuthorizationTransactionsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(OauthAuthorizationTransactionsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, OauthAuthorizationTransactionsTable, OauthAuthorizationTransactionsColumn),
+	)
+}
+func newOauthAuthorizationCodesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(OauthAuthorizationCodesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, OauthAuthorizationCodesTable, OauthAuthorizationCodesColumn),
+	)
+}
+func newOauthConsentsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(OauthConsentsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, OauthConsentsTable, OauthConsentsColumn),
+	)
+}
+func newOauthAccessTokensStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(OauthAccessTokensInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, OauthAccessTokensTable, OauthAccessTokensColumn),
+	)
+}
+func newOauthRefreshTokensStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(OauthRefreshTokensInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, OauthRefreshTokensTable, OauthRefreshTokensColumn),
+	)
+}
+func newOauthManagedAPIKeysStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(OauthManagedAPIKeysInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, OauthManagedAPIKeysTable, OauthManagedAPIKeysColumn),
 	)
 }
 func newUserAllowedGroupsStep() *sqlgraph.Step {

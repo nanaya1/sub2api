@@ -130,6 +130,8 @@ func (APIKey) Edges() []ent.Edge {
 			Field("group_id").
 			Unique(),
 		edge.To("usage_logs", UsageLog.Type),
+		edge.To("oauth_managed_api_keys", OAuthManagedAPIKey.Type).
+			Annotations(entsql.Annotation{OnDelete: entsql.Cascade}),
 	}
 }
 
