@@ -112,6 +112,25 @@ services:
       - TOTP_ENCRYPTION_KEY=${TOTP_ENCRYPTION_KEY:-}
 
       # =======================================================================
+      # Snowwave OAuth Authorization Server
+      # Disabled by default. When enabled, OAUTH_SERVER_HASH_KEY must contain
+      # at least 32 bytes and must be injected from a secret store or .env.
+      # =======================================================================
+      - OAUTH_SERVER_ENABLED=${OAUTH_SERVER_ENABLED:-false}
+      - OAUTH_SERVER_ISSUER=${OAUTH_SERVER_ISSUER:-https://api.xuelanglm.com}
+      - OAUTH_SERVER_CLIENT_ID=${OAUTH_SERVER_CLIENT_ID:-}
+      - OAUTH_SERVER_REDIRECT_URI=${OAUTH_SERVER_REDIRECT_URI:-meacowork://oauth/callback}
+      - OAUTH_SERVER_AUTHORIZATION_CODE_TTL=${OAUTH_SERVER_AUTHORIZATION_CODE_TTL:-60s}
+      - OAUTH_SERVER_ACCESS_TOKEN_TTL=${OAUTH_SERVER_ACCESS_TOKEN_TTL:-15m}
+      - OAUTH_SERVER_REFRESH_TOKEN_ABSOLUTE_TTL=${OAUTH_SERVER_REFRESH_TOKEN_ABSOLUTE_TTL:-720h}
+      - OAUTH_SERVER_REFRESH_TOKEN_IDLE_TTL=${OAUTH_SERVER_REFRESH_TOKEN_IDLE_TTL:-168h}
+      - OAUTH_SERVER_REQUIRE_PKCE_S256=${OAUTH_SERVER_REQUIRE_PKCE_S256:-true}
+      - OAUTH_SERVER_HASH_KEY_VERSION=${OAUTH_SERVER_HASH_KEY_VERSION:-2}
+      - OAUTH_SERVER_HASH_KEY=${OAUTH_SERVER_HASH_KEY:-}
+      - OAUTH_SERVER_PREVIOUS_HASH_KEY_VERSION=${OAUTH_SERVER_PREVIOUS_HASH_KEY_VERSION:-0}
+      - OAUTH_SERVER_PREVIOUS_HASH_KEY=${OAUTH_SERVER_PREVIOUS_HASH_KEY:-}
+
+      # =======================================================================
       # Timezone Configuration
       # This affects ALL time operations in the application:
       # - Database timestamps
