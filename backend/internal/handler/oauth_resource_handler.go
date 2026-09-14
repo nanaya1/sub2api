@@ -44,6 +44,10 @@ func (h *OAuthResourceHandler) Tokens(c *gin.Context) {
 			c.JSON(http.StatusForbidden, gin.H{"error": "access_denied", "code": err.Error()})
 			return
 		}
+		if errors.Is(err, service.ErrOAuthNoEligibleGroup) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "access_denied", "code": "NO_ELIGIBLE_GROUP"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "server_error"})
 		return
 	}
