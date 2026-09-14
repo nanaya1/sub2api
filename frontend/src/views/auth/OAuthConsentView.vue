@@ -21,7 +21,8 @@
       <div v-else-if="consent" class="space-y-5">
         <div class="rounded-lg border border-gray-200 p-4 dark:border-dark-700">
           <p class="text-sm text-gray-500 dark:text-dark-400">请求访问的应用</p>
-          <p class="mt-1 font-medium text-gray-900 dark:text-white">{{ consent.client_id }}</p>
+          <p class="mt-1 font-medium text-gray-900 dark:text-white">{{ clientDisplayName }}</p>
+          <p v-if="clientDisplayName !== consent.client_id" class="mt-0.5 text-xs text-gray-400 dark:text-dark-500">{{ consent.client_id }}</p>
         </div>
 
         <div class="rounded-lg border border-gray-200 p-4 dark:border-dark-700">
@@ -32,7 +33,7 @@
               :key="scope"
               class="text-sm text-gray-900 dark:text-white"
             >
-              • {{ scope }}
+              • {{ scopeLabel(scope) }}
             </li>
           </ul>
         </div>
@@ -85,6 +86,29 @@ const loading = ref<boolean>(false)
 const submitting = ref<boolean>(false)
 const errorMessage = ref<string>('')
 const consent = ref<OAuthConsentInfo | null>(null)
+
+// Scope -> 中文描述。与后端 OAuthServerScopes（backend/internal/service/oauth_scope.go）保持一致；
+// 出现未知 scope 时降级显示原始字符串。
+const SCOPE_LABELS: Record<string, string> = {
+  openid: '登录身份标识',
+  profile: '查看基本资料',
+  email: '查看邮箱地址',
+  offline_access: '保持登录状态（离线访问）',
+  'balance:read': '读取账户余额',
+  'usage:read': '读取用量记录',
+  'tokens:read': '读取 API 令牌',
+  'tokens:write': '创建和管理 API 令牌'
+}
+
+function scopeLabel(scope: string): string {
+  return SCOPE_LABELS[scope] ?? scope
+}
+
+// 应用显示名：优先用后端返回的注册名，缺失时降级为 client_id 字符串。
+const clientDisplayName = computed(() => {
+  if (!consent.value) return ''
+  return consent.value.client_name?.trim() || consent.value.client_id
+})
 
 onMounted(async () => {
   if (!transactionId.value) {

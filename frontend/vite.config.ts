@@ -169,6 +169,10 @@ export default defineConfig(({ mode }) => {
         '/setup': {
           target: backendUrl,
           changeOrigin: true
+        },
+        '/oauth2': {
+          target: backendUrl,
+          changeOrigin: true
         }
       }
     }

@@ -17,9 +17,16 @@ type OAuthTransactionInput struct {
 type OAuthAuthorizationTransactionRecord struct {
 	UserID                                                                                                   int64
 	TransactionID, RedirectURI, State, Challenge, ChallengeMethod, BrowserSessionHash, CSRFTokenHash, Status string
-	ClientID                                                                                                 int64
-	Scopes                                                                                                   []string
-	ExpiresAt                                                                                                time.Time
+	// 2026-09-14：原字段 ClientID 是 oauth_clients.id 内部自增 FK，此前被当作 client_id 返回给
+	// 授权确认页（页面上显示成 "1"）。现改为下方三个新字段；原字段注释保留、暂不删除。
+	// ClientID                                                                                                 int64
+	// ClientInternalID  = oauth_clients.id 外键（bigint，仅内部使用）
+	// ClientExternalID  = 对外稳定的字符串 client_id（授权请求中使用的标识）
+	// ClientName        = 注册的应用显示名（确认页展示）
+	ClientInternalID             int64
+	ClientExternalID, ClientName string
+	Scopes                       []string
+	ExpiresAt                    time.Time
 }
 
 // OAuthTransactionResult carries the created transaction together with the
@@ -47,7 +54,9 @@ func NewOAuthAuthorizationTransaction(in OAuthTransactionInput) (*OAuthTransacti
 	return &OAuthTransactionResult{
 		OAuthAuthorizationTransactionRecord: &OAuthAuthorizationTransactionRecord{
 			TransactionID:      id,
-			ClientID:           in.ClientID,
+			// 2026-09-14：ClientID → ClientInternalID（原因见结构体注释），原行注释保留。
+			// ClientID:           in.ClientID,
+			ClientInternalID:   in.ClientID,
 			RedirectURI:        in.RedirectURI,
 			Scopes:             append([]string(nil), in.Scopes...),
 			State:              in.State,

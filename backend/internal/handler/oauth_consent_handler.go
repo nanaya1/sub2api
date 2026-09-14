@@ -65,8 +65,13 @@ func (h *OAuthConsentHandler) Get(c *gin.Context) {
 	}
 	// The CSRF plaintext is returned in the response body so the consent form can
 	// echo it back as the anti-CSRF form field. No CSRF cookie is (re)issued here.
+	//
+	// 2026-09-14：client_id 原返回内部自增 FK（页面显示 "1"），改为返回对外字符串 client_id，
+	// 并新增 client_name 供确认页展示注册应用名。原行注释保留、暂不删除。
+	// "client_id":      x.ClientID,
 	c.JSON(http.StatusOK, gin.H{
-		"client_id":      x.ClientID,
+		"client_id":      x.ClientExternalID,
+		"client_name":    x.ClientName,
 		"scopes":         x.Scopes,
 		"transaction_id": x.TransactionID,
 		"csrf":           csrf,

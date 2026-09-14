@@ -17,6 +17,8 @@ import { apiClient } from './client'
 
 export interface OAuthConsentInfo {
   client_id: string
+  /** 注册的应用显示名；可能为空（此时降级显示 client_id）。 */
+  client_name?: string
   scopes: string[]
   transaction_id: string
   csrf: string

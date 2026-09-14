@@ -27,7 +27,28 @@ This directory contains files for deploying Sub2API on Linux servers and Apple-s
 | `sub2api-datamanagementd.service` | datamanagementd systemd service unit file |
 | `DATAMANAGEMENTD_CN.md` | datamanagementd 部署与联动说明（中文） |
 | `config.example.yaml` | Example configuration file |
+| `seed-oauth-client.sql` | OAuth Authorization Server 客户端种子数据（新环境初始化必跑一次，见下文） |
 | `EDGE_SECURITY.md` | Reverse proxy, CDN/WAF, trusted proxy, and ingress hardening guide |
+
+---
+
+## OAuth Authorization Server 初始化（启用雪浪 OAuth 时必做）
+
+若配置开启 `oauth_server.enabled: true`（供 Cherry Studio / MEA Cowork 桌面端走 OAuth 授权换取托管 API Key），除表结构（migration 238 随启动自动应用）外，还需一次手工初始化：
+
+1. **播种 OAuth 客户端**（`oauth_clients` 表没有默认数据，缺了它所有授权请求直接失败）：
+
+   ```bash
+   psql "postgresql://<user>:<password>@<host>:5432/<db>" \
+     -v client_id='2a348c87-bae1-4756-a62f-b2e97200fd6d' \
+     -f seed-oauth-client.sql
+   ```
+
+   `client_id` 必须与桌面端一致；`redirect_uri` 当前仅支持 `meacowork://oauth/callback`。
+
+2. **config.yaml 关键项**（启动 fail-fast 校验）：`client_id` 非空、`issuer` 必须 https、`redirect_uri` 恰为 `meacowork://oauth/callback`、强制 PKCE S256。
+
+3. **给目标用户开通订阅**（授权后创建托管 Key 的前置条件）：管理后台「分组管理」创建类型为 `subscription` 的分组并保持启用，再到「订阅管理」给用户开通订阅。缺这一步，用户授权流程会以 403 结束。
 
 ---
 
