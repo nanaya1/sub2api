@@ -21,8 +21,13 @@ func (r *oauthServerRepository) RotateRefresh(ctx context.Context, in service.OA
 		return nil, err
 	}
 	defer tx.Rollback()
+	candidatesJSON, err := oauthHashCandidatesJSON(in.TokenHashes, in.TokenHash)
+	if err != nil {
+		return nil, service.ErrInvalidRequest
+	}
 	var family uuid.UUID
-	err = tx.QueryRowContext(ctx, `SELECT t.family_id FROM oauth_refresh_tokens t JOIN oauth_clients cl ON cl.id=t.client_id WHERE t.token_hash=$1 AND cl.client_id=$2`, in.TokenHash, in.ClientID).Scan(&family)
+	// 2026-09-14：原 token_hash 单值查询改为版本 + 摘要候选匹配。
+	err = tx.QueryRowContext(ctx, `SELECT t.family_id FROM oauth_refresh_tokens t JOIN oauth_clients cl ON cl.id=t.client_id WHERE EXISTS (SELECT 1 FROM jsonb_to_recordset($1::jsonb) AS h(version int, hash text) WHERE h.version=t.hash_key_version AND h.hash=t.token_hash) AND cl.client_id=$2`, candidatesJSON, in.ClientID).Scan(&family)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, service.ErrInvalidGrant
 	}
@@ -41,12 +46,14 @@ func (r *oauthServerRepository) RotateRefresh(ctx context.Context, in service.OA
  JOIN oauth_clients cl ON cl.id=t.client_id
  JOIN users u ON u.id=t.user_id
  JOIN oauth_consents co ON co.client_id=t.client_id AND co.user_id=t.user_id
- WHERE t.token_hash=$1 AND cl.client_id=$2
+ WHERE EXISTS (SELECT 1 FROM jsonb_to_recordset($1::jsonb) AS h(version int, hash text)
+               WHERE h.version=t.hash_key_version AND h.hash=t.token_hash)
+ AND cl.client_id=$2
  AND cl.status='active' AND cl.client_type='public' AND cl.require_pkce=TRUE
  AND u.status='active' AND u.deleted_at IS NULL AND co.revoked_at IS NULL
  AND co.scopes @> t.scopes AND cl.allowed_scopes @> t.scopes
  AND cl.allowed_grant_types @> '["refresh_token"]'::jsonb
- FOR UPDATE OF t,cl,u,co`, in.TokenHash, in.ClientID).Scan(&id, &userID, &clientID, &scopesJSON, &expires, &idle, &revoked, &replaced, &lastUsed)
+ FOR UPDATE OF t,cl,u,co`, candidatesJSON, in.ClientID).Scan(&id, &userID, &clientID, &scopesJSON, &expires, &idle, &revoked, &replaced, &lastUsed)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, service.ErrInvalidGrant
 	}
@@ -85,11 +92,12 @@ func (r *oauthServerRepository) RotateRefresh(ctx context.Context, in service.OA
 	if idleExpiry.After(expires.Time) {
 		idleExpiry = expires.Time
 	}
-	if _, err = tx.ExecContext(ctx, `INSERT INTO oauth_access_tokens (token_hash,family_id,user_id,client_id,scopes,issued_at,expires_at) VALUES ($1,$2,$3,$4,$5,$6,$7)`, in.AccessHash, family, userID, clientID, string(scopesJSON), in.Now, accessExpiry); err != nil {
+	// 2026-09-14：轮换产生的新 token 显式写入当前 HMAC 密钥版本。
+	if _, err = tx.ExecContext(ctx, `INSERT INTO oauth_access_tokens (token_hash,hash_key_version,family_id,user_id,client_id,scopes,issued_at,expires_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, in.AccessHash, in.AccessHashVersion, family, userID, clientID, string(scopesJSON), in.Now, accessExpiry); err != nil {
 		return nil, err
 	}
 	var nextID int64
-	if err = tx.QueryRowContext(ctx, `INSERT INTO oauth_refresh_tokens (token_hash,family_id,user_id,client_id,scopes,issued_at,expires_at,idle_expires_at,parent_token_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`, in.RefreshHash, family, userID, clientID, string(scopesJSON), in.Now, expires.Time, idleExpiry, id).Scan(&nextID); err != nil {
+	if err = tx.QueryRowContext(ctx, `INSERT INTO oauth_refresh_tokens (token_hash,hash_key_version,family_id,user_id,client_id,scopes,issued_at,expires_at,idle_expires_at,parent_token_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`, in.RefreshHash, in.RefreshHashVersion, family, userID, clientID, string(scopesJSON), in.Now, expires.Time, idleExpiry, id).Scan(&nextID); err != nil {
 		return nil, err
 	}
 	if _, err = tx.ExecContext(ctx, `UPDATE oauth_refresh_tokens SET last_used_at=$1,updated_at=$1,replaced_by_token_id=$2 WHERE id=$3`, in.Now, nextID, id); err != nil {

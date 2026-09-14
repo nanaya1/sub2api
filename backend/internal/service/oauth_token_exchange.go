@@ -19,19 +19,29 @@ func (s *OAuthServerService) ExchangeCode(ctx context.Context, clientID, code, r
 	if clientID == "" || code == "" || len(code) > 1024 || len(clientID) > 128 {
 		return nil, ErrInvalidRequest
 	}
-	return s.issue(ctx, func(access, refresh string, now time.Time) (*OAuthIssuedGrant, error) {
-		return s.Repo.ExchangeCode(ctx, OAuthCodeExchange{CodeHash: HashOAuthSecret(code), ClientID: clientID, RedirectURI: redirect, Verifier: verifier, AccessHash: access, RefreshHash: refresh, Now: now, AccessTTL: s.accessTTL, RefreshTTL: s.refreshTTL, IdleTTL: s.idleTTL})
+	if s.hasher == nil {
+		return nil, ErrServerError
+	}
+	return s.issue(ctx, func(access, refresh OAuthSecretHash, now time.Time) (*OAuthIssuedGrant, error) {
+		// 2026-09-14：原 CodeHash 单摘要改为版本化候选，新 token 显式写当前 HMAC 版本。
+		// return s.Repo.ExchangeCode(ctx, OAuthCodeExchange{CodeHash: HashOAuthSecret(code), ...})
+		return s.Repo.ExchangeCode(ctx, OAuthCodeExchange{CodeHashes: s.hasher.Candidates(code), ClientID: clientID, RedirectURI: redirect, Verifier: verifier, AccessHash: access.Hash, RefreshHash: refresh.Hash, AccessHashVersion: access.Version, RefreshHashVersion: refresh.Version, Now: now, AccessTTL: s.accessTTL, RefreshTTL: s.refreshTTL, IdleTTL: s.idleTTL})
 	})
 }
 func (s *OAuthServerService) Refresh(ctx context.Context, clientID, token string) (*OAuthTokenResponse, error) {
 	if clientID == "" || token == "" || len(token) > 1024 || len(clientID) > 128 {
 		return nil, ErrInvalidRequest
 	}
-	return s.issue(ctx, func(access, refresh string, now time.Time) (*OAuthIssuedGrant, error) {
-		return s.Repo.RotateRefresh(ctx, OAuthRefreshExchange{TokenHash: HashOAuthSecret(token), ClientID: clientID, AccessHash: access, RefreshHash: refresh, Now: now, AccessTTL: s.accessTTL, IdleTTL: s.idleTTL})
+	if s.hasher == nil {
+		return nil, ErrServerError
+	}
+	return s.issue(ctx, func(access, refresh OAuthSecretHash, now time.Time) (*OAuthIssuedGrant, error) {
+		// 2026-09-14：原 refresh token 单摘要改为版本化候选。
+		// return s.Repo.RotateRefresh(ctx, OAuthRefreshExchange{TokenHash: HashOAuthSecret(token), ...})
+		return s.Repo.RotateRefresh(ctx, OAuthRefreshExchange{TokenHashes: s.hasher.Candidates(token), ClientID: clientID, AccessHash: access.Hash, RefreshHash: refresh.Hash, AccessHashVersion: access.Version, RefreshHashVersion: refresh.Version, Now: now, AccessTTL: s.accessTTL, IdleTTL: s.idleTTL})
 	})
 }
-func (s *OAuthServerService) issue(ctx context.Context, commit func(string, string, time.Time) (*OAuthIssuedGrant, error)) (*OAuthTokenResponse, error) {
+func (s *OAuthServerService) issue(ctx context.Context, commit func(OAuthSecretHash, OAuthSecretHash, time.Time) (*OAuthIssuedGrant, error)) (*OAuthTokenResponse, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -44,7 +54,9 @@ func (s *OAuthServerService) issue(ctx context.Context, commit func(string, stri
 		return nil, err
 	}
 	now := s.now()
-	grant, err := commit(HashOAuthSecret(access), HashOAuthSecret(refresh), now)
+	// 2026-09-14：原无密钥摘要写入改为当前 HMAC 版本。
+	// grant, err := commit(HashOAuthSecret(access), HashOAuthSecret(refresh), now)
+	grant, err := commit(s.hasher.Current(access), s.hasher.Current(refresh), now)
 	if err != nil {
 		return nil, err
 	}

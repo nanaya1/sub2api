@@ -53,7 +53,7 @@ func NewOAuthAuthorizationTransaction(in OAuthTransactionInput) (*OAuthTransacti
 	}
 	return &OAuthTransactionResult{
 		OAuthAuthorizationTransactionRecord: &OAuthAuthorizationTransactionRecord{
-			TransactionID:      id,
+			TransactionID: id,
 			// 2026-09-14：ClientID → ClientInternalID（原因见结构体注释），原行注释保留。
 			// ClientID:           in.ClientID,
 			ClientInternalID:   in.ClientID,
@@ -114,8 +114,10 @@ type OAuthDecisionRepoInput struct {
 	BrowserSession string
 	CSRFToken      string
 	CodeHash       string
-	CodeTTL        time.Duration
-	Now            time.Time
+	// 2026-09-14：授权码摘要新增显式密钥版本；v1 固定为历史 SHA-256。
+	CodeHashVersion int
+	CodeTTL         time.Duration
+	Now             time.Time
 }
 
 // OAuthDecisionRepoOutput is returned by the repository after commit. Code is

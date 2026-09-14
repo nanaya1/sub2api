@@ -952,6 +952,29 @@ linuxdo_connect:
   userinfo_username_path: ""
 
 # =============================================================================
+# Snowwave OAuth Authorization Server
+# 雪浪 OAuth 授权服务器（Sub2API 作为授权服务器）
+# =============================================================================
+oauth_server:
+  enabled: false
+  issuer: "https://api.xuelanglm.com"
+  client_id: ""
+  redirect_uri: "meacowork://oauth/callback"
+  authorization_code_ttl: 60s
+  access_token_ttl: 15m
+  refresh_token_absolute_ttl: 720h
+  refresh_token_idle_ttl: 168h
+  require_pkce_s256: true
+  # 2026-09-14：v1 固定为历史 SHA-256；新部署从 v2 HMAC 开始。
+  hash_key_version: 2
+  # 必须通过 OAUTH_SERVER_HASH_KEY 或 Secret Manager 注入，至少 32 字节。
+  # 禁止把真实密钥写入配置文件、仓库或镜像。
+  hash_key: ""
+  # 密钥轮换时临时保留上一版本；不用时保持 0/空。
+  previous_hash_key_version: 0
+  previous_hash_key: ""
+
+# =============================================================================
 # Generic OIDC OAuth Login (SSO)
 # 通用 OIDC OAuth 登录（用于 Sub2API 用户登录）
 # =============================================================================

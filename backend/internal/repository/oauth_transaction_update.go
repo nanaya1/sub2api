@@ -29,7 +29,8 @@ func (r *oauthServerRepository) DecideAuthorizationTransaction(ctx context.Conte
 	if in.TransactionID == "" || in.UserID <= 0 || (in.Decision != "approve" && in.Decision != "deny") {
 		return nil, service.ErrInvalidRequest
 	}
-	if in.Decision == "approve" && (in.CodeHash == "" || in.CodeTTL <= 0) {
+	// 2026-09-14：批准时必须携带 v2+ HMAC 版本，防止新授权码误写为 legacy v1。
+	if in.Decision == "approve" && (in.CodeHash == "" || in.CodeHashVersion < 2 || in.CodeTTL <= 0) {
 		return nil, service.ErrServerError
 	}
 	tx, err := r.sql.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
@@ -88,8 +89,9 @@ ON CONFLICT (user_id, client_id) DO UPDATE SET scopes = EXCLUDED.scopes, revoked
 		if _, err = tx.ExecContext(ctx, `
 INSERT INTO oauth_authorization_codes
   (code_hash, redirect_uri, scopes, code_challenge, code_challenge_method, hash_key_version, expires_at, consumed_at, user_id, client_id, created_at, updated_at)
-VALUES ($1, $2, $3, $4, 'S256', 1, $5, NULL, $6, $7, $8, $8)`,
-			in.CodeHash, redirect, scopes, challenge, codeExpiry, in.UserID, clientID, in.Now); err != nil {
+-- 2026-09-14：原 hash_key_version 固定值 1 改为服务层传入的当前 HMAC 版本。
+VALUES ($1, $2, $3, $4, 'S256', $5, $6, NULL, $7, $8, $9, $9)`,
+			in.CodeHash, redirect, scopes, challenge, in.CodeHashVersion, codeExpiry, in.UserID, clientID, in.Now); err != nil {
 			return nil, err
 		}
 		if _, err = tx.ExecContext(ctx, `UPDATE oauth_authorization_transactions SET status = 'approved', consumed_at = $1, updated_at = $1 WHERE id = $2`, in.Now, id); err != nil {

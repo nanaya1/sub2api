@@ -4,12 +4,20 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/stretchr/testify/require"
 )
 
 // fakeDecisionRepo implements OAuthServerRepository by embedding the interface and
 // overriding only the method under test, so the service can be exercised without a
 // database.
+func testOAuthSecretHasher(t *testing.T) *OAuthSecretHasher {
+	t.Helper()
+	hasher, err := NewOAuthSecretHasher(config.OAuthServerConfig{HashKeyVersion: 2, HashKey: "oauth-test-hmac-key-32-bytes-long"})
+	require.NoError(t, err)
+	return hasher
+}
+
 type fakeDecisionRepo struct {
 	OAuthServerRepository
 	call *OAuthDecisionRepoInput
@@ -24,7 +32,7 @@ func (f *fakeDecisionRepo) DecideAuthorizationTransaction(_ context.Context, in 
 
 func TestOAuthTransactionServiceDecideApprove(t *testing.T) {
 	repo := &fakeDecisionRepo{resp: &OAuthDecisionRepoOutput{RedirectURI: "https://app/cb", State: "state"}}
-	svc := &OAuthTransactionService{Repo: repo}
+	svc := &OAuthTransactionService{Repo: repo, Hasher: testOAuthSecretHasher(t)}
 	out, err := svc.Decide(context.Background(), OAuthDecisionInput{
 		TransactionID: "tx", UserID: 7, Decision: "approve", BrowserSession: "browser", CSRFToken: "csrf",
 	})
@@ -38,11 +46,12 @@ func TestOAuthTransactionServiceDecideApprove(t *testing.T) {
 	require.Equal(t, "csrf", repo.call.CSRFToken)
 	require.NotEmpty(t, repo.call.CodeHash, "the repository must receive only the code hash")
 	require.NotEqual(t, out.Code, repo.call.CodeHash)
+	require.Equal(t, 2, repo.call.CodeHashVersion)
 }
 
 func TestOAuthTransactionServiceDecideDeny(t *testing.T) {
 	repo := &fakeDecisionRepo{resp: &OAuthDecisionRepoOutput{RedirectURI: "https://app/cb", State: "state"}}
-	svc := &OAuthTransactionService{Repo: repo}
+	svc := &OAuthTransactionService{Repo: repo, Hasher: testOAuthSecretHasher(t)}
 	out, err := svc.Decide(context.Background(), OAuthDecisionInput{
 		TransactionID: "tx", UserID: 7, Decision: "deny", BrowserSession: "browser", CSRFToken: "csrf",
 	})
@@ -53,7 +62,7 @@ func TestOAuthTransactionServiceDecideDeny(t *testing.T) {
 
 func TestOAuthTransactionServiceDecideRejectsBadInput(t *testing.T) {
 	repo := &fakeDecisionRepo{}
-	svc := &OAuthTransactionService{Repo: repo}
+	svc := &OAuthTransactionService{Repo: repo, Hasher: testOAuthSecretHasher(t)}
 	_, err := svc.Decide(context.Background(), OAuthDecisionInput{UserID: 0, Decision: "approve"})
 	require.ErrorIs(t, err, ErrInvalidRequest)
 	_, err = svc.Decide(context.Background(), OAuthDecisionInput{UserID: 7, Decision: "maybe"})
@@ -63,7 +72,7 @@ func TestOAuthTransactionServiceDecideRejectsBadInput(t *testing.T) {
 
 func TestOAuthTransactionServiceDecidePropagatesRepoError(t *testing.T) {
 	repo := &fakeDecisionRepo{err: ErrInvalidGrant}
-	svc := &OAuthTransactionService{Repo: repo}
+	svc := &OAuthTransactionService{Repo: repo, Hasher: testOAuthSecretHasher(t)}
 	_, err := svc.Decide(context.Background(), OAuthDecisionInput{TransactionID: "tx", UserID: 7, Decision: "approve", BrowserSession: "b", CSRFToken: "c"})
 	require.ErrorIs(t, err, ErrInvalidGrant)
 }

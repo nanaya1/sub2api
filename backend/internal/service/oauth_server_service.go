@@ -21,8 +21,11 @@ const (
 )
 
 type OAuthRepository interface {
-	FindActiveAccessToken(context.Context, string, time.Time) (*AccessTokenRecord, error)
-	RevokeCredential(context.Context, string, string, time.Time) error
+	// 2026-09-14：凭据读取按 hash_key_version + hash 候选匹配；旧单摘要签名注释保留。
+	// FindActiveAccessToken(context.Context, string, time.Time) (*AccessTokenRecord, error)
+	FindActiveAccessToken(context.Context, []OAuthSecretHash, time.Time) (*AccessTokenRecord, error)
+	// RevokeCredential(context.Context, string, string, time.Time) error
+	RevokeCredential(context.Context, []OAuthSecretHash, string, time.Time) error
 	ExchangeCode(context.Context, OAuthCodeExchange) (*OAuthIssuedGrant, error)
 	RotateRefresh(context.Context, OAuthRefreshExchange) (*OAuthIssuedGrant, error)
 	RevokeFamily(context.Context, uuid.UUID, time.Time) error
@@ -31,6 +34,7 @@ type OAuthServerService struct {
 	Repo                           OAuthRepository
 	Now                            func() time.Time
 	accessTTL, refreshTTL, idleTTL time.Duration
+	hasher                         *OAuthSecretHasher
 }
 
 func (s *OAuthServerService) now() time.Time {
@@ -40,16 +44,29 @@ func (s *OAuthServerService) now() time.Time {
 	return time.Now().UTC()
 }
 func NewOAuthServerService(r OAuthRepository) *OAuthServerService {
-	return &OAuthServerService{Repo: r, accessTTL: OAuthAccessTokenTTL, refreshTTL: OAuthRefreshAbsoluteTTL, idleTTL: OAuthRefreshIdleTTL}
+	// 2026-09-14：测试便捷构造器使用进程内随机密钥；生产必须使用下方配置构造器。
+	key, err := GenerateOAuthSecret()
+	if err != nil {
+		return &OAuthServerService{Repo: r, accessTTL: OAuthAccessTokenTTL, refreshTTL: OAuthRefreshAbsoluteTTL, idleTTL: OAuthRefreshIdleTTL}
+	}
+	hasher, _ := NewOAuthSecretHasher(config.OAuthServerConfig{HashKeyVersion: 2, HashKey: key})
+	return &OAuthServerService{Repo: r, accessTTL: OAuthAccessTokenTTL, refreshTTL: OAuthRefreshAbsoluteTTL, idleTTL: OAuthRefreshIdleTTL, hasher: hasher}
 }
 
 // NewConfiguredOAuthServerService is the production constructor. Routing and
 // startup configuration must independently enforce Enabled and client policy.
 func NewConfiguredOAuthServerService(r OAuthRepository, cfg config.OAuthServerConfig) (*OAuthServerService, error) {
+	if !cfg.Enabled {
+		return &OAuthServerService{Repo: r, accessTTL: cfg.AccessTokenTTL, refreshTTL: cfg.RefreshTokenAbsoluteTTL, idleTTL: cfg.RefreshTokenIdleTTL}, nil
+	}
 	if r == nil || cfg.AccessTokenTTL < time.Second || cfg.RefreshTokenAbsoluteTTL < cfg.AccessTokenTTL || cfg.RefreshTokenIdleTTL < time.Second || cfg.RefreshTokenIdleTTL > cfg.RefreshTokenAbsoluteTTL {
 		return nil, ErrInvalidRequest
 	}
-	return &OAuthServerService{Repo: r, accessTTL: cfg.AccessTokenTTL, refreshTTL: cfg.RefreshTokenAbsoluteTTL, idleTTL: cfg.RefreshTokenIdleTTL}, nil
+	hasher, err := NewOAuthSecretHasher(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return &OAuthServerService{Repo: r, accessTTL: cfg.AccessTokenTTL, refreshTTL: cfg.RefreshTokenAbsoluteTTL, idleTTL: cfg.RefreshTokenIdleTTL, hasher: hasher}, nil
 }
 func GenerateOAuthSecret() (string, error) {
 	b := make([]byte, 32)
@@ -93,10 +110,12 @@ func ValidateOAuthScopes(requested, granted []string) error {
 func OAuthScopeString(v []string) string { return strings.Join(v, " ") }
 
 func (s *OAuthServerService) AuthenticateBearer(ctx context.Context, token string) (*AccessTokenRecord, error) {
-	if strings.TrimSpace(token) == "" {
+	if strings.TrimSpace(token) == "" || s.hasher == nil {
 		return nil, ErrInvalidRequest
 	}
-	r, err := s.Repo.FindActiveAccessToken(ctx, HashOAuthSecret(token), s.now())
+	// 2026-09-14：原 HashOAuthSecret(token) 单摘要查询改为版本化 HMAC 候选。
+	// r, err := s.Repo.FindActiveAccessToken(ctx, HashOAuthSecret(token), s.now())
+	r, err := s.Repo.FindActiveAccessToken(ctx, s.hasher.Candidates(token), s.now())
 	if err != nil {
 		return nil, ErrInvalidGrant
 	}
@@ -104,8 +123,10 @@ func (s *OAuthServerService) AuthenticateBearer(ctx context.Context, token strin
 }
 
 func (s *OAuthServerService) Revoke(ctx context.Context, credential, clientID string) error {
-	if strings.TrimSpace(credential) == "" {
+	if strings.TrimSpace(credential) == "" || s.hasher == nil {
 		return ErrInvalidRequest
 	}
-	return s.Repo.RevokeCredential(ctx, HashOAuthSecret(credential), clientID, s.now())
+	// 2026-09-14：撤销同时覆盖当前、上一版 HMAC 与 legacy v1。
+	// return s.Repo.RevokeCredential(ctx, HashOAuthSecret(credential), clientID, s.now())
+	return s.Repo.RevokeCredential(ctx, s.hasher.Candidates(credential), clientID, s.now())
 }

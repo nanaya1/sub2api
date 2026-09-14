@@ -21,6 +21,10 @@ func (r *oauthServerRepository) ExchangeCode(ctx context.Context, in service.OAu
 		return nil, err
 	}
 	defer tx.Rollback()
+	candidatesJSON, err := oauthHashCandidatesJSON(in.CodeHashes, in.CodeHash)
+	if err != nil {
+		return nil, service.ErrInvalidRequest
+	}
 	var id, userID, clientID int64
 	var redirect, challenge, method string
 	var scopesJSON []byte
@@ -32,12 +36,14 @@ func (r *oauthServerRepository) ExchangeCode(ctx context.Context, in service.OAu
  JOIN oauth_clients cl ON cl.id = c.client_id
  JOIN users u ON u.id = c.user_id
  JOIN oauth_consents co ON co.client_id = c.client_id AND co.user_id = c.user_id
- WHERE c.code_hash = $1 AND cl.client_id = $2
+ WHERE EXISTS (SELECT 1 FROM jsonb_to_recordset($1::jsonb) AS h(version int, hash text)
+               WHERE h.version = c.hash_key_version AND h.hash = c.code_hash)
+ AND cl.client_id = $2
  AND cl.status = 'active' AND cl.client_type = 'public' AND cl.require_pkce = TRUE
  AND u.status = 'active' AND u.deleted_at IS NULL AND co.revoked_at IS NULL
  AND co.scopes @> c.scopes AND cl.allowed_scopes @> c.scopes
  AND cl.allowed_grant_types @> '["authorization_code"]'::jsonb
- FOR UPDATE OF c, cl, u, co`, in.CodeHash, in.ClientID).Scan(&id, &userID, &clientID, &redirect, &challenge, &method, &scopesJSON, &expires, &consumed)
+ FOR UPDATE OF c, cl, u, co`, candidatesJSON, in.ClientID).Scan(&id, &userID, &clientID, &redirect, &challenge, &method, &scopesJSON, &expires, &consumed)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, service.ErrInvalidGrant
 	}
@@ -63,15 +69,18 @@ func (r *oauthServerRepository) ExchangeCode(ctx context.Context, in service.OAu
 	if _, err = tx.ExecContext(ctx, `UPDATE oauth_authorization_codes SET consumed_at=$1, updated_at=$1 WHERE id=$2`, in.Now, id); err != nil {
 		return nil, err
 	}
+	// 2026-09-14：新 token 显式写入 HMAC 密钥版本；原无版本 INSERT 注释保留。
+	// INSERT INTO oauth_access_tokens (token_hash, family_id, user_id, client_id, scopes, issued_at, expires_at) ...
 	if _, err = tx.ExecContext(ctx, `INSERT INTO oauth_access_tokens
- (token_hash, family_id, user_id, client_id, scopes, issued_at, expires_at)
- VALUES ($1,$2,$3,$4,$5,$6,$7)`, in.AccessHash, family, userID, clientID, string(scopesJSON), in.Now, accessExpiry); err != nil {
+ (token_hash, hash_key_version, family_id, user_id, client_id, scopes, issued_at, expires_at)
+ VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, in.AccessHash, in.AccessHashVersion, family, userID, clientID, string(scopesJSON), in.Now, accessExpiry); err != nil {
 		return nil, err
 	}
 	if service.IsSubset([]string{"offline_access"}, scopes) {
+		// 2026-09-14：refresh token 同步写入当前 HMAC 密钥版本。
 		if _, err = tx.ExecContext(ctx, `INSERT INTO oauth_refresh_tokens
-  (token_hash, family_id, user_id, client_id, scopes, issued_at, expires_at, idle_expires_at)
-  VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, in.RefreshHash, family, userID, clientID, string(scopesJSON), in.Now, refreshExpiry, in.Now.Add(in.IdleTTL)); err != nil {
+  (token_hash, hash_key_version, family_id, user_id, client_id, scopes, issued_at, expires_at, idle_expires_at)
+  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, in.RefreshHash, in.RefreshHashVersion, family, userID, clientID, string(scopesJSON), in.Now, refreshExpiry, in.Now.Add(in.IdleTTL)); err != nil {
 			return nil, err
 		}
 	}

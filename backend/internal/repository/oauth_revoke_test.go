@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -26,7 +27,10 @@ func TestOAuthRevokeCredential(t *testing.T) {
 			defer db.Close()
 			family := uuid.New()
 			now := time.Now().UTC()
-			q := m.ExpectQuery("SELECT family_id FROM").WithArgs("hashed", tc.client)
+			candidates := []service.OAuthSecretHash{{Version: 2, Hash: "hashed"}}
+			candidatesJSON, encodeErr := oauthHashCandidatesJSON(candidates, "")
+			require.NoError(t, encodeErr)
+			q := m.ExpectQuery("SELECT family_id FROM").WithArgs(candidatesJSON, tc.client)
 			if tc.dbError {
 				q.WillReturnError(errors.New("offline"))
 			} else {
@@ -44,7 +48,7 @@ func TestOAuthRevokeCredential(t *testing.T) {
 				m.ExpectCommit()
 			}
 			r := &oauthServerRepository{sql: db}
-			err = r.RevokeCredential(context.Background(), "hashed", tc.client, now)
+			err = r.RevokeCredential(context.Background(), candidates, tc.client, now)
 			if tc.dbError {
 				require.Error(t, err)
 			} else {

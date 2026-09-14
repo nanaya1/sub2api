@@ -383,6 +383,13 @@ type OAuthServerConfig struct {
 	RefreshTokenIdleTTL time.Duration `mapstructure:"refresh_token_idle_ttl"`
 	// RequirePKCES256 是否强制 PKCE S256，第一轮只允许 S256，默认 true。
 	RequirePKCES256 bool `mapstructure:"require_pkce_s256"`
+	// 2026-09-14：新增 OAuth 凭据 HMAC 密钥版本配置；v1 固定保留为历史 SHA-256，当前写入版本必须 >=2。
+	HashKeyVersion int `mapstructure:"hash_key_version"`
+	// HashKey 必须通过环境变量或 Secret Manager 注入，至少 32 字节，禁止提交到仓库。
+	HashKey string `mapstructure:"hash_key"`
+	// PreviousHashKeyVersion/PreviousHashKey 在轮换窗口内读取上一版 HMAC；不用时保持 0/空。
+	PreviousHashKeyVersion int    `mapstructure:"previous_hash_key_version"`
+	PreviousHashKey        string `mapstructure:"previous_hash_key"`
 }
 
 // maxOAuthAuthorizationCodeTTL 是授权码有效期的硬上限，防止过长导致重放窗口扩大。
@@ -2220,6 +2227,11 @@ func setDefaults() {
 	viper.SetDefault("oauth_server.refresh_token_absolute_ttl", 720*time.Hour) // 30 天
 	viper.SetDefault("oauth_server.refresh_token_idle_ttl", 168*time.Hour)     // 7 天
 	viper.SetDefault("oauth_server.require_pkce_s256", true)
+	// 2026-09-14：新签发 OAuth 凭据默认使用 v2 HMAC；v1 保留为历史 SHA-256 读取兼容。
+	viper.SetDefault("oauth_server.hash_key_version", 2)
+	viper.SetDefault("oauth_server.hash_key", "")
+	viper.SetDefault("oauth_server.previous_hash_key_version", 0)
+	viper.SetDefault("oauth_server.previous_hash_key", "")
 
 	// DingTalk Connect OAuth 登录
 	viper.SetDefault("dingtalk_connect.enabled", false)
@@ -3146,6 +3158,20 @@ func (c *Config) Validate() error {
 		}
 		if !c.OAuthServer.RequirePKCES256 {
 			return fmt.Errorf("oauth_server.require_pkce_s256 must be true (only S256 PKCE is allowed)")
+		}
+		// 2026-09-14：OAuth 启用时必须配置 v2+ HMAC 密钥，避免继续签发无密钥 SHA-256 凭据。
+		if c.OAuthServer.HashKeyVersion < 2 {
+			return fmt.Errorf("oauth_server.hash_key_version must be at least 2 (version 1 is reserved for legacy SHA-256)")
+		}
+		if len(c.OAuthServer.HashKey) < 32 {
+			return fmt.Errorf("oauth_server.hash_key must be at least 32 bytes when oauth_server.enabled=true")
+		}
+		if c.OAuthServer.PreviousHashKeyVersion != 0 {
+			if c.OAuthServer.PreviousHashKeyVersion < 2 || c.OAuthServer.PreviousHashKeyVersion >= c.OAuthServer.HashKeyVersion || len(c.OAuthServer.PreviousHashKey) < 32 {
+				return fmt.Errorf("oauth_server.previous_hash_key configuration is invalid")
+			}
+		} else if c.OAuthServer.PreviousHashKey != "" {
+			return fmt.Errorf("oauth_server.previous_hash_key_version is required when previous_hash_key is configured")
 		}
 	}
 	if c.Billing.CircuitBreaker.Enabled {

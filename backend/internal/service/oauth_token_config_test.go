@@ -8,9 +8,16 @@ import (
 	"time"
 )
 
+func TestOAuthConfiguredServiceAllowsDisabledWithoutHashKey(t *testing.T) {
+	r := &exchangeRepoStub{}
+	s, err := NewConfiguredOAuthServerService(r, config.OAuthServerConfig{})
+	require.NoError(t, err)
+	require.NotNil(t, s)
+}
+
 func TestOAuthConfiguredTTLs(t *testing.T) {
 	r := &exchangeRepoStub{}
-	c := config.OAuthServerConfig{AccessTokenTTL: 2 * time.Minute, RefreshTokenAbsoluteTTL: 24 * time.Hour, RefreshTokenIdleTTL: time.Hour}
+	c := config.OAuthServerConfig{Enabled: true, AccessTokenTTL: 2 * time.Minute, RefreshTokenAbsoluteTTL: 24 * time.Hour, RefreshTokenIdleTTL: time.Hour, HashKeyVersion: 2, HashKey: "oauth-test-hmac-key-32-bytes-long"}
 	s, err := NewConfiguredOAuthServerService(r, c)
 	require.NoError(t, err)
 	response, err := s.ExchangeCode(context.Background(), "desktop", "code", "meacowork://oauth/callback", "verifier")

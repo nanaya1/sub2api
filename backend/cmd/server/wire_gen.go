@@ -329,8 +329,9 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	oAuthRevokeHandler := handler.NewOAuthRevokeHandler(oAuthRevocationService)
 	oAuthAuthorizeService := service.ProvideOAuthAuthorizeService(oauthServerRepository)
 	oAuthAuthorizeClientService := handler.ProvideOAuthAuthorizeClientService(oAuthAuthorizeService)
-	oAuthTransactionService := &service.OAuthTransactionService{
-		Repo: oauthServerRepository,
+	oAuthTransactionService, err := service.ProvideOAuthTransactionService(oauthServerRepository, configConfig)
+	if err != nil {
+		return nil, err
 	}
 	oAuthAuthorizeHandler := handler.ProvideOAuthAuthorizeHandler(oAuthAuthorizeClientService, oAuthTransactionService)
 	oAuthConsentHandler := handler.ProvideOAuthConsentHandler(oauthServerRepository, oAuthTransactionService)

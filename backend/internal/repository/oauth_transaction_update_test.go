@@ -30,7 +30,7 @@ func TestOAuthDecisionApproveAtomic(t *testing.T) {
 	out, err := r.DecideAuthorizationTransaction(context.Background(), service.OAuthDecisionRepoInput{
 		TransactionID: "tx", UserID: 7, Decision: "approve",
 		BrowserSession: "browser", CSRFToken: "csrf",
-		CodeHash: service.HashOAuthSecret("code"), CodeTTL: time.Minute, Now: now,
+		CodeHash: service.HashOAuthSecret("code"), CodeHashVersion: 2, CodeTTL: time.Minute, Now: now,
 	})
 	require.NoError(t, err)
 	require.Equal(t, "https://app/cb", out.RedirectURI)
@@ -90,7 +90,7 @@ func TestOAuthDecisionReplayAndBadContexts(t *testing.T) {
 			_, err := r.DecideAuthorizationTransaction(context.Background(), service.OAuthDecisionRepoInput{
 				TransactionID: "tx", UserID: tc.userID, Decision: "approve",
 				BrowserSession: tc.browser, CSRFToken: tc.csrf,
-				CodeHash: service.HashOAuthSecret("code"), CodeTTL: time.Minute, Now: now,
+				CodeHash: service.HashOAuthSecret("code"), CodeHashVersion: 2, CodeTTL: time.Minute, Now: now,
 			})
 			require.ErrorIs(t, err, service.ErrInvalidGrant)
 			require.NoError(t, m.ExpectationsWereMet())
@@ -111,7 +111,7 @@ func TestOAuthDecisionRollbackOnInsertFailure(t *testing.T) {
 	_, err := r.DecideAuthorizationTransaction(context.Background(), service.OAuthDecisionRepoInput{
 		TransactionID: "tx", UserID: 7, Decision: "approve",
 		BrowserSession: "browser", CSRFToken: "csrf",
-		CodeHash: service.HashOAuthSecret("code"), CodeTTL: time.Minute, Now: now,
+		CodeHash: service.HashOAuthSecret("code"), CodeHashVersion: 2, CodeTTL: time.Minute, Now: now,
 	})
 	require.Error(t, err)
 	require.NoError(t, m.ExpectationsWereMet())

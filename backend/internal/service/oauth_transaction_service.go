@@ -10,9 +10,10 @@ type OAuthTransactionCreator interface {
 }
 
 type OAuthTransactionService struct {
-	Repo OAuthServerRepository
-	TTL  time.Duration
-	Now  func() time.Time
+	Repo   OAuthServerRepository
+	TTL    time.Duration
+	Now    func() time.Time
+	Hasher *OAuthSecretHasher
 }
 
 // now returns a single clock reading for the current request, defaulting to UTC.
@@ -111,7 +112,14 @@ func (s *OAuthTransactionService) Decide(ctx context.Context, in OAuthDecisionIn
 			return nil, ErrServerError
 		}
 		code = c
-		repoIn.CodeHash = HashOAuthSecret(c)
+		if s.Hasher == nil {
+			return nil, ErrServerError
+		}
+		// 2026-09-14：原授权码 SHA-256 摘要改为当前版本 HMAC；原行注释保留。
+		// repoIn.CodeHash = HashOAuthSecret(c)
+		codeDigest := s.Hasher.Current(c)
+		repoIn.CodeHash = codeDigest.Hash
+		repoIn.CodeHashVersion = codeDigest.Version
 		repoIn.CodeTTL = s.codeTTL()
 	}
 	repoOut, err := s.Repo.DecideAuthorizationTransaction(ctx, repoIn)

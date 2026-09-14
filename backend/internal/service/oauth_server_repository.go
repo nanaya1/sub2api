@@ -9,8 +9,11 @@ import (
 
 // OAuthCodeExchange contains hashes only; raw credentials remain in the service.
 type OAuthCodeExchange struct {
+	// 2026-09-14：原单一 CodeHash 改为版本化候选，保留字段用于旧测试/调用兼容。
 	CodeHash, ClientID, RedirectURI, Verifier string
+	CodeHashes                                []OAuthSecretHash
 	AccessHash, RefreshHash                   string
+	AccessHashVersion, RefreshHashVersion     int
 	Now                                       time.Time
 	AccessTTL, RefreshTTL, IdleTTL            time.Duration
 }
@@ -23,7 +26,10 @@ type OAuthIssuedGrant struct {
 }
 
 type OAuthRefreshExchange struct {
+	// 2026-09-14：原 TokenHash 保留用于旧测试/调用兼容；生产路径使用 TokenHashes。
 	TokenHash, ClientID, AccessHash, RefreshHash string
+	TokenHashes                                  []OAuthSecretHash
+	AccessHashVersion, RefreshHashVersion        int
 	Now                                          time.Time
 	AccessTTL, IdleTTL                           time.Duration
 }
@@ -45,8 +51,11 @@ type OAuthServerRepository interface {
 	FindAuthorizationTransaction(context.Context, string) (*OAuthAuthorizationTransactionRecord, error)
 	DecideAuthorizationTransaction(context.Context, OAuthDecisionRepoInput) (*OAuthDecisionRepoOutput, error)
 	ResumeAuthorizationTransaction(context.Context, OAuthResumeRepoInput) error
-	FindActiveAccessToken(context.Context, string, time.Time) (*AccessTokenRecord, error)
-	RevokeCredential(context.Context, string, string, time.Time) error
+	// 2026-09-14：原单摘要接口改为版本化候选；旧签名注释保留。
+	// FindActiveAccessToken(context.Context, string, time.Time) (*AccessTokenRecord, error)
+	FindActiveAccessToken(context.Context, []OAuthSecretHash, time.Time) (*AccessTokenRecord, error)
+	// RevokeCredential(context.Context, string, string, time.Time) error
+	RevokeCredential(context.Context, []OAuthSecretHash, string, time.Time) error
 	RotateRefresh(context.Context, OAuthRefreshExchange) (*OAuthIssuedGrant, error)
 	ExchangeCode(context.Context, OAuthCodeExchange) (*OAuthIssuedGrant, error)
 	FindAuthorizationCode(context.Context, string) (*AuthorizationCodeRecord, error)
@@ -67,6 +76,7 @@ type AuthorizationCodeRecord struct {
 }
 type AccessTokenRecord struct {
 	Hash                string
+	HashKeyVersion      int
 	FamilyID            uuid.UUID
 	UserID, ClientID    int64
 	Scopes              []string

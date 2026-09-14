@@ -93,12 +93,26 @@ func TestOAuthServerRejectsIllegalRefreshIdleTTL(t *testing.T) {
 	require.ErrorContains(t, err, "refresh_token_idle_ttl")
 }
 
+func TestOAuthServerRejectsMissingHashKeyWhenEnabled(t *testing.T) {
+	resetViperWithJWTSecret(t)
+	viper.Set("oauth_server.enabled", true)
+	viper.Set("oauth_server.client_id", "xuelang-client")
+	viper.Set("oauth_server.issuer", "https://api.xuelanglm.com")
+	viper.Set("oauth_server.redirect_uri", "meacowork://oauth/callback")
+
+	_, err := Load()
+	require.Error(t, err)
+	require.ErrorContains(t, err, "oauth_server.hash_key")
+}
+
 func TestOAuthServerEnabledWithValidConfigPasses(t *testing.T) {
 	resetViperWithJWTSecret(t)
 	viper.Set("oauth_server.enabled", true)
 	viper.Set("oauth_server.client_id", "xuelang-client")
 	viper.Set("oauth_server.issuer", "https://api.xuelanglm.com")
 	viper.Set("oauth_server.redirect_uri", "meacowork://oauth/callback")
+	// 2026-09-14：OAuth 启用后必须注入至少 32 字节的 HMAC 密钥。
+	viper.Set("oauth_server.hash_key", "0123456789abcdef0123456789abcdef")
 
 	_, err := Load()
 	require.NoError(t, err)

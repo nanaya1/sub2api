@@ -831,10 +831,23 @@ func ProvideOAuthServerService(repo OAuthServerRepository, cfg *config.Config) (
 	return NewConfiguredOAuthServerService(repo, cfg.OAuthServer)
 }
 
+func ProvideOAuthTransactionService(repo OAuthServerRepository, cfg *config.Config) (*OAuthTransactionService, error) {
+	if !cfg.OAuthServer.Enabled {
+		return &OAuthTransactionService{Repo: repo, TTL: cfg.OAuthServer.AuthorizationCodeTTL}, nil
+	}
+	hasher, err := NewOAuthSecretHasher(cfg.OAuthServer)
+	if err != nil {
+		return nil, err
+	}
+	return &OAuthTransactionService{Repo: repo, TTL: cfg.OAuthServer.AuthorizationCodeTTL, Hasher: hasher}, nil
+}
+
 var ProviderSet = wire.NewSet(
 	ProvideOAuthServerService,
 	ProvideOAuthAuthorizeService,
-	wire.Struct(new(OAuthTransactionService), "Repo"),
+	// 2026-09-14：原仅注入 Repo 的 Wire 构造改为同时注入 HMAC hasher 与配置 TTL。
+	// wire.Struct(new(OAuthTransactionService), "Repo"),
+	ProvideOAuthTransactionService,
 	// Core services
 	ProvideAuthService,
 	NewPasskeyService,

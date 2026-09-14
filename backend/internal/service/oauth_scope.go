@@ -5,9 +5,10 @@ import (
 )
 
 // OAuthServerScopes 是雪浪 OAuth Authorization Server 第一轮固定支持的 scope 集合。
-// 注意：当前客户端虽可携带 openid，但本批不实现 OIDC，不签发 id_token。
+// 2026-09-14：本服务不签发 id_token，因此不宣称支持 openid；但兼容写死 openid
+// 的 OpenAI 式客户端（如 Cherry Studio gateway / MeacoWork）——openid 按可忽略
+// scope 容忍：校验不拒绝，入库/授权前剔除（见 IgnoredScopes / StripIgnoredScopes）。
 var OAuthServerScopes = []string{
-	"openid",
 	"profile",
 	"email",
 	"offline_access",
@@ -15,6 +16,38 @@ var OAuthServerScopes = []string{
 	"usage:read",
 	"tokens:read",
 	"tokens:write",
+}
+
+// IgnoredScopes 是"容忍但不宣称"的 scope：客户端可以携带，服务端不校验、
+// 不写入授权记录、也不赋予任何权限。openid 属于此类——本服务暂不实现
+// OIDC、不签发 id_token，因此不能把 openid 记入 granted scopes（会在
+// refresh/exchange 的 allowed_scopes @> 子集校验中留下永远无法满足的承诺）。
+var IgnoredScopes = []string{
+	"openid",
+}
+
+// isIgnoredScope 判断 s 是否属于可忽略 scope。
+func isIgnoredScope(s string) bool {
+	for _, ig := range IgnoredScopes {
+		if s == ig {
+			return true
+		}
+	}
+	return false
+}
+
+// StripIgnoredScopes 返回剔除可忽略 scope 后的列表（保持原顺序）。
+// 供授权入口在白名单校验和事务入库前调用，保证 transaction.scopes、
+// consent 展示与 oauth_consents.granted 全部不含 openid。
+func StripIgnoredScopes(scopes []string) []string {
+	out := make([]string, 0, len(scopes))
+	for _, s := range scopes {
+		if isIgnoredScope(s) {
+			continue
+		}
+		out = append(out, s)
+	}
+	return out
 }
 
 // allowedScopeSet 供 O(1) 查找。
@@ -45,10 +78,14 @@ func ParseScopes(raw string) []string {
 	return out
 }
 
-// ValidateScopes 校验每个 scope 都属于固定支持集合（大小写敏感）。
-// 遇到未知 scope 返回 ErrInvalidScope（invalid_scope）。
+// ValidateScopes 校验每个 scope 都属于固定支持集合或可忽略集合（大小写敏感）。
+// 可忽略 scope（openid）不报错——由入口调用方 StripIgnoredScopes 剔除；
+// 遇到真正未知的 scope 返回 ErrInvalidScope（invalid_scope）。
 func ValidateScopes(scopes []string) error {
 	for _, s := range scopes {
+		if isIgnoredScope(s) {
+			continue
+		}
 		if _, ok := allowedScopeSet[s]; !ok {
 			return ErrInvalidScope
 		}

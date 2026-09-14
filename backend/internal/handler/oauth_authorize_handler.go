@@ -36,7 +36,11 @@ func (h *OAuthAuthorizeHandler) Authorize(c *gin.Context) {
 	}
 	scopes := []string{}
 	if s := c.Query("scope"); s != "" {
-		scopes = strings.Fields(s)
+		// 2026-09-14：openid 容忍但忽略——OpenAI 式客户端会写死携带 openid，
+		// 本服务不实现 OIDC、不签发 id_token，因此在白名单校验和事务入库前
+		// 剔除，保证 ValidateClient 子集校验、consent 展示与 oauth_consents
+		// 的 granted scopes 全链路一致（不含 openid）。
+		scopes = service.StripIgnoredScopes(strings.Fields(s))
 	}
 	client, e := h.clients.ValidateClient(c.Request.Context(), c.Query("client_id"), c.Query("redirect_uri"), scopes)
 	if e != nil {

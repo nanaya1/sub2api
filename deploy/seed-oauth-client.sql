@@ -32,7 +32,9 @@ INSERT INTO oauth_clients (
     'public',
     '["meacowork://oauth/callback"]'::jsonb,
     '["authorization_code", "refresh_token"]'::jsonb,
-    '["openid", "profile", "email", "offline_access", "balance:read", "usage:read", "tokens:read", "tokens:write"]'::jsonb,
+    -- 2026-09-14：服务端暂不签发 id_token，原 allowed_scopes 中的 "openid" 移除。
+    -- '["openid", "profile", "email", "offline_access", "balance:read", "usage:read", "tokens:read", "tokens:write"]'::jsonb,
+    '["profile", "email", "offline_access", "balance:read", "usage:read", "tokens:read", "tokens:write"]'::jsonb,
     TRUE,
     'active'
 )
