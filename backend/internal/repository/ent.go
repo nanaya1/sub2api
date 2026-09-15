@@ -157,6 +157,13 @@ func InitEnt(cfg *config.Config) (*ent.Client, *sql.DB, error) {
 		return nil, nil, fmt.Errorf("validate config after secret bootstrap: %w", err)
 	}
 
+	// OAuth Authorization Server 启用时，从可信配置幂等补齐官方客户端。
+	// 该步骤位于迁移之后、HTTP 路由启动之前；失败时阻止服务以半可用状态启动。
+	if err := ensureOAuthServerOfficialClient(migrationCtx, client, cfg); err != nil {
+		_ = client.Close()
+		return nil, nil, err
+	}
+
 	// SIMPLE 模式：启动时补齐各平台默认分组。
 	// - anthropic/openai/gemini: 确保存在 <platform>-default
 	// - antigravity: 仅要求存在 >=2 个未软删除分组（用于 claude/gemini 混合调度场景）

@@ -1,13 +1,13 @@
 -- ============================================================================
--- 雪浪 OAuth Authorization Server — 客户端种子数据（新环境初始化用）
+-- 雪浪 OAuth Authorization Server — 客户端种子数据（运维兜底用）
 --
 -- 背景：
---   * oauth_* 七张表由 migration 238 自动创建（迁移嵌入二进制，启动即应用），
---     但 oauth_clients 是空表，没有任何 migration 会播种客户端行。
---   * config.yaml 的 oauth_server.client_id 仅用于启动非空校验；
---     实际授权请求的客户端校验查本表（client_id / redirect_uris /
+--   * oauth_* 七张表由 migration 238 自动创建（迁移嵌入二进制，启动即应用）。
+--   * OAuth Server 启用后，主服务会在迁移完成且开放 HTTP 路由前，根据可信配置
+--     自动幂等创建或同步官方客户端；已有 disabled 状态不会被启动过程恢复。
+--   * 本脚本仅用于灾难恢复、旧镜像或自动初始化排障，不再是新环境部署的必做步骤。
+--   * 实际授权请求的客户端校验仍查本表（client_id / redirect_uris /
 --     allowed_scopes / status='active' / require_pkce）。
---   * 因此新环境部署后必须手工执行本脚本一次，否则授权请求一律 403/invalid_client。
 --
 -- 用法（任选其一）：
 --   psql:  psql "postgresql://sub2api:sub2api@127.0.0.1:5432/sub2api" \
