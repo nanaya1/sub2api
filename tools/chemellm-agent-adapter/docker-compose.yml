@@ -1,0 +1,22 @@
+services:
+  chemellm-agent-adapter:
+    build: .
+    container_name: chemellm-agent-adapter
+    restart: unless-stopped
+    environment:
+      LISTEN: 0.0.0.0:18081
+      PUBLIC_MODEL: chemellm_agent
+      CHEMELLM_API_KEY: ${CHEMELLM_API_KEY:?set CHEMELLM_API_KEY}
+      ADAPTER_API_KEY: ${ADAPTER_API_KEY:?set ADAPTER_API_KEY}
+      UPSTREAM_TIMEOUT_SECONDS: "600"
+      INCLUDE_TOOL_EVENTS: "true"
+    ports:
+      - "127.0.0.1:18081:18081"
+    networks:
+      - sub2api-network
+
+networks:
+  sub2api-network:
+    external: true
+    name: ${SUB2API_DOCKER_NETWORK:-sub2api-deploy_sub2api-network}
+

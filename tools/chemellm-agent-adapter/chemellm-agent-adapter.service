@@ -1,0 +1,20 @@
+[Unit]
+Description=ChemELLM Agent OpenAI Adapter
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sub2api
+Group=sub2api
+EnvironmentFile=/etc/chemellm-agent-adapter.env
+ExecStart=/usr/bin/python3 /opt/chemellm-agent-adapter/adapter.py
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
