@@ -14,6 +14,8 @@ func RegisterOAuthServerRoutes(r *gin.Engine, h *handler.Handlers, cfg config.OA
 	// Cherry Studio gateway clients use /oauth2/auth; retain the existing alias.
 	// The authorization endpoint is public: it creates a transaction and 302s to
 	// the first-party consent page, which then enforces authentication.
+	// 2026-10-19：Cookie 安全策略仅由显式配置控制。
+	h.OAuthAuthorize.SetCookieSecure(cfg.CookieSecure)
 	r.GET("/oauth2/auth", h.OAuthAuthorize.Authorize)
 	r.GET("/oauth2/authorize", h.OAuthAuthorize.Authorize)
 	// Consent retrieval, decision, and resume are first-party, authenticated

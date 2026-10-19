@@ -49,7 +49,9 @@ services:
       # 2026-09-14: OAuth AS values are passed explicitly so dev/staging can
       # validate the same HMAC and scope contract as production.
       - OAUTH_SERVER_ENABLED=${OAUTH_SERVER_ENABLED:-false}
-      - OAUTH_SERVER_ISSUER=${OAUTH_SERVER_ISSUER:-https://api.xuelanglm.com}
+      # 2026-10-19: HTTP compatible by default; set true for HTTPS.
+      # - OAUTH_SERVER_COOKIE_SECURE=${OAUTH_SERVER_COOKIE_SECURE:-true}
+      - OAUTH_SERVER_COOKIE_SECURE=${OAUTH_SERVER_COOKIE_SECURE:-false}
       - OAUTH_SERVER_CLIENT_ID=${OAUTH_SERVER_CLIENT_ID:-}
       - OAUTH_SERVER_REDIRECT_URI=${OAUTH_SERVER_REDIRECT_URI:-meacowork://oauth/callback}
       - OAUTH_SERVER_AUTHORIZATION_CODE_TTL=${OAUTH_SERVER_AUTHORIZATION_CODE_TTL:-60s}

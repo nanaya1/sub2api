@@ -956,8 +956,10 @@ linuxdo_connect:
 # 雪浪 OAuth 授权服务器（Sub2API 作为授权服务器）
 # =============================================================================
 oauth_server:
+  # 2026-10-19: 默认兼容 HTTP；HTTPS 部署可显式设 true。
+  # cookie_secure: true
+  cookie_secure: false
   enabled: false
-  issuer: "https://api.xuelanglm.com"
   client_id: ""
   redirect_uri: "meacowork://oauth/callback"
   authorization_code_ttl: 60s

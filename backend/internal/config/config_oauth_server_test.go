@@ -8,6 +8,38 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// 2026-10-19：issuer 已移除，遗留配置不应阻止 OAuth Server 启动。
+func TestOAuthServerIgnoresRemovedIssuer(t *testing.T) {
+	for _, issuer := range []string{"", "not-an-absolute-url", "ftp://legacy.example.com"} {
+		t.Run(issuer, func(t *testing.T) {
+			resetViperWithJWTSecret(t)
+			viper.Set("oauth_server.enabled", true)
+			viper.Set("oauth_server.client_id", "xuelang-client")
+			viper.Set("oauth_server.redirect_uri", "meacowork://oauth/callback")
+			viper.Set("oauth_server.hash_key", "0123456789abcdef0123456789abcdef")
+			viper.Set("oauth_server.issuer", issuer)
+			_, err := Load()
+			require.NoError(t, err)
+		})
+	}
+}
+
+// 2026-10-19：默认兼容 HTTP，环境变量可显式开启 Secure。
+func TestOAuthServerCookieSecure(t *testing.T) {
+	resetViperWithJWTSecret(t)
+	cfg, err := Load()
+	require.NoError(t, err)
+	// 2026-10-19：按用户要求默认 false，HTTPS 可显式开启。
+	// require.True(t, cfg.OAuthServer.CookieSecure)
+	require.False(t, cfg.OAuthServer.CookieSecure)
+	// t.Setenv("OAUTH_SERVER_COOKIE_SECURE", "false")
+	t.Setenv("OAUTH_SERVER_COOKIE_SECURE", "true")
+	cfg, err = Load()
+	require.NoError(t, err)
+	// require.False(t, cfg.OAuthServer.CookieSecure)
+	require.True(t, cfg.OAuthServer.CookieSecure)
+}
+
 // 以下测试覆盖批次 0：OAuth Authorization Server 配置与功能开关。
 // 不改动现有 oidc_connect（外部 IdP）配置，不与 Gateway 路由耦合。
 
@@ -39,7 +71,6 @@ func TestOAuthServerRejectsEmptyClientIDWhenEnabled(t *testing.T) {
 	resetViperWithJWTSecret(t)
 	viper.Set("oauth_server.enabled", true)
 	viper.Set("oauth_server.client_id", "")
-	viper.Set("oauth_server.issuer", "https://api.xuelanglm.com")
 	viper.Set("oauth_server.redirect_uri", "meacowork://oauth/callback")
 
 	_, err := Load()
@@ -47,23 +78,10 @@ func TestOAuthServerRejectsEmptyClientIDWhenEnabled(t *testing.T) {
 	require.ErrorContains(t, err, "oauth_server.client_id")
 }
 
-func TestOAuthServerRejectsIllegalIssuerWhenEnabled(t *testing.T) {
-	resetViperWithJWTSecret(t)
-	viper.Set("oauth_server.enabled", true)
-	viper.Set("oauth_server.client_id", "xuelang-client")
-	viper.Set("oauth_server.issuer", "not-an-absolute-url")
-	viper.Set("oauth_server.redirect_uri", "meacowork://oauth/callback")
-
-	_, err := Load()
-	require.Error(t, err)
-	require.ErrorContains(t, err, "oauth_server.issuer")
-}
-
 func TestOAuthServerRejectsNonS256WhenEnabled(t *testing.T) {
 	resetViperWithJWTSecret(t)
 	viper.Set("oauth_server.enabled", true)
 	viper.Set("oauth_server.client_id", "xuelang-client")
-	viper.Set("oauth_server.issuer", "https://api.xuelanglm.com")
 	viper.Set("oauth_server.redirect_uri", "meacowork://oauth/callback")
 	viper.Set("oauth_server.require_pkce_s256", false)
 
@@ -97,7 +115,6 @@ func TestOAuthServerRejectsMissingHashKeyWhenEnabled(t *testing.T) {
 	resetViperWithJWTSecret(t)
 	viper.Set("oauth_server.enabled", true)
 	viper.Set("oauth_server.client_id", "xuelang-client")
-	viper.Set("oauth_server.issuer", "https://api.xuelanglm.com")
 	viper.Set("oauth_server.redirect_uri", "meacowork://oauth/callback")
 
 	_, err := Load()
@@ -109,7 +126,6 @@ func TestOAuthServerEnabledWithValidConfigPasses(t *testing.T) {
 	resetViperWithJWTSecret(t)
 	viper.Set("oauth_server.enabled", true)
 	viper.Set("oauth_server.client_id", "xuelang-client")
-	viper.Set("oauth_server.issuer", "https://api.xuelanglm.com")
 	viper.Set("oauth_server.redirect_uri", "meacowork://oauth/callback")
 	// 2026-09-14：OAuth 启用后必须注入至少 32 字节的 HMAC 密钥。
 	viper.Set("oauth_server.hash_key", "0123456789abcdef0123456789abcdef")
@@ -120,47 +136,10 @@ func TestOAuthServerEnabledWithValidConfigPasses(t *testing.T) {
 
 // 以下为批次 0 复核要求的 TDD 失败用例（先红后绿）。
 
-func TestOAuthServerRejectsNonHTTPSIssuerWhenEnabled(t *testing.T) {
-	resetViperWithJWTSecret(t)
-	viper.Set("oauth_server.enabled", true)
-	viper.Set("oauth_server.client_id", "xuelang-client")
-	viper.Set("oauth_server.issuer", "http://api.xuelanglm.com") // 仅 http，必须 https
-	viper.Set("oauth_server.redirect_uri", "meacowork://oauth/callback")
-
-	_, err := Load()
-	require.Error(t, err)
-	require.ErrorContains(t, err, "oauth_server.issuer")
-}
-
-func TestOAuthServerRejectsIssuerUserinfoWhenEnabled(t *testing.T) {
-	resetViperWithJWTSecret(t)
-	viper.Set("oauth_server.enabled", true)
-	viper.Set("oauth_server.client_id", "xuelang-client")
-	viper.Set("oauth_server.issuer", "https://user@api.xuelanglm.com")
-	viper.Set("oauth_server.redirect_uri", "meacowork://oauth/callback")
-
-	_, err := Load()
-	require.Error(t, err)
-	require.ErrorContains(t, err, "oauth_server.issuer")
-}
-
-func TestOAuthServerRejectsIssuerQueryWhenEnabled(t *testing.T) {
-	resetViperWithJWTSecret(t)
-	viper.Set("oauth_server.enabled", true)
-	viper.Set("oauth_server.client_id", "xuelang-client")
-	viper.Set("oauth_server.issuer", "https://api.xuelanglm.com?x=1")
-	viper.Set("oauth_server.redirect_uri", "meacowork://oauth/callback")
-
-	_, err := Load()
-	require.Error(t, err)
-	require.ErrorContains(t, err, "oauth_server.issuer")
-}
-
 func TestOAuthServerRejectsWrongRedirectURIWhenEnabled(t *testing.T) {
 	resetViperWithJWTSecret(t)
 	viper.Set("oauth_server.enabled", true)
 	viper.Set("oauth_server.client_id", "xuelang-client")
-	viper.Set("oauth_server.issuer", "https://api.xuelanglm.com")
 	viper.Set("oauth_server.redirect_uri", "https://evil.example.com/cb")
 
 	_, err := Load()
@@ -172,7 +151,6 @@ func TestOAuthServerRejectsEmptyRedirectURIWhenEnabled(t *testing.T) {
 	resetViperWithJWTSecret(t)
 	viper.Set("oauth_server.enabled", true)
 	viper.Set("oauth_server.client_id", "xuelang-client")
-	viper.Set("oauth_server.issuer", "https://api.xuelanglm.com")
 	viper.Set("oauth_server.redirect_uri", "")
 
 	_, err := Load()

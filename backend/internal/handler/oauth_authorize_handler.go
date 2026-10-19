@@ -17,6 +17,8 @@ type OAuthAuthorizeTransactionService interface {
 	Create(context.Context, service.OAuthTransactionInput) (*service.OAuthTransactionResult, error)
 }
 type OAuthAuthorizeHandler struct {
+	// 2026-10-19：使用反向标志使旧构造方式仍默认 Secure。
+	allowInsecureCookies bool
 	clients      OAuthAuthorizeClientService
 	transactions OAuthAuthorizeTransactionService
 }
@@ -28,6 +30,11 @@ func NewOAuthAuthorizeHandlerWithTransactions(c OAuthAuthorizeClientService, t O
 func NewOAuthAuthorizeHandler(c OAuthAuthorizeClientService) *OAuthAuthorizeHandler {
 	return &OAuthAuthorizeHandler{clients: c}
 }
+// 2026-10-19：由路由注册注入部署配置，避免根据不可信代理头自动降级。
+func (h *OAuthAuthorizeHandler) SetCookieSecure(secure bool) {
+	h.allowInsecureCookies = !secure
+}
+
 func (h *OAuthAuthorizeHandler) Authorize(c *gin.Context) {
 	c.Header("Cache-Control", "no-store")
 	if c.Query("response_type") != "code" || c.Query("client_id") == "" || c.Query("redirect_uri") == "" || c.Query("state") == "" || c.Query("code_challenge") == "" || c.Query("code_challenge_method") != "S256" {
@@ -51,7 +58,9 @@ func (h *OAuthAuthorizeHandler) Authorize(c *gin.Context) {
 		c.JSON(http.StatusNotImplemented, gin.H{"error": "authorization_pending"})
 		return
 	}
-	input := service.OAuthTransactionInput{ClientID: client.ID, RedirectURI: c.Query("redirect_uri"), Scopes: scopes, State: c.Query("state"), Challenge: c.Query("code_challenge"), ChallengeMethod: c.Query("code_challenge_method"), BrowserSession: oauthBrowserCookie(c)}
+	// 2026-10-19：浏览器绑定 Cookie 与 CSRF Cookie 共用显式安全配置。
+	// input := service.OAuthTransactionInput{ClientID: client.ID, RedirectURI: c.Query("redirect_uri"), Scopes: scopes, State: c.Query("state"), Challenge: c.Query("code_challenge"), ChallengeMethod: c.Query("code_challenge_method"), BrowserSession: oauthBrowserCookie(c)}
+	input := service.OAuthTransactionInput{ClientID: client.ID, RedirectURI: c.Query("redirect_uri"), Scopes: scopes, State: c.Query("state"), Challenge: c.Query("code_challenge"), ChallengeMethod: c.Query("code_challenge_method"), BrowserSession: oauthBrowserCookie(c, !h.allowInsecureCookies)}
 	if input.ChallengeMethod == "" {
 		input.ChallengeMethod = "S256"
 	}
@@ -69,7 +78,9 @@ func (h *OAuthAuthorizeHandler) Authorize(c *gin.Context) {
 	// valid CSRF credential: the consent POST must present the value in the form
 	// body, which the server verifies against the stored hash.
 	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie("oauth_csrf", res.CSRFToken, int(input.TTL.Seconds()), "/", "", true, true)
+	// 2026-10-19：与 oauth_browser 同步，默认 Secure，HTTP 部署需显式关闭。
+	// c.SetCookie("oauth_csrf", res.CSRFToken, int(input.TTL.Seconds()), "/", "", true, true)
+	c.SetCookie("oauth_csrf", res.CSRFToken, int(input.TTL.Seconds()), "/", "", !h.allowInsecureCookies, true)
 	// Hand the browser off to the first-party consent page, carrying only the
 	// opaque transaction id. The OAuth state and the CSRF token are deliberately
 	// NOT placed in the URL: state stays server-side and CSRF travels via the

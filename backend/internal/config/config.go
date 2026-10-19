@@ -365,10 +365,10 @@ type OIDCConnectConfig struct {
 // 不应把外部 IdP 的 OIDC 配置混入此结构。
 // 第一轮默认关闭，且不实现 OIDC（不签发 id_token）。
 type OAuthServerConfig struct {
+	// 2026-10-19：默认 false 以兼容 HTTP；HTTPS 部署可显式开启。
+	CookieSecure bool `mapstructure:"cookie_secure"`
 	// Enabled 功能开关，默认 false。
 	Enabled bool `mapstructure:"enabled"`
-	// Issuer 授权服务器 issuer 标识，必须是绝对 HTTP(S) URL。
-	Issuer string `mapstructure:"issuer"`
 	// ClientID 雪浪官方客户端 ID 占位，正式值确定前留空。
 	ClientID string `mapstructure:"client_id"`
 	// RedirectURI 注册到雪浪客户端的回调地址。
@@ -401,40 +401,6 @@ const minOAuthAuthorizationCodeTTL = 1 * time.Second
 
 // oauthServerRedirectURI 是雪浪 OAuth 首期（批次 0）唯一允许的回调地址。
 const oauthServerRedirectURI = "meacowork://oauth/callback"
-
-// validateOAuthServerIssuer 校验授权服务器 issuer：必须是 https 绝对 URL，
-// 且不含 userinfo / query / fragment（避免歧义与注入）。
-// 注意：它与外部 IdP 的 oidc_connect.issuer（允许 http）相互独立，
-// 因此不复用 ValidateAbsoluteHTTPURL（后者允许 http 且仅拒绝 fragment）。
-func validateOAuthServerIssuer(raw string) error {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return fmt.Errorf("issuer must not be empty")
-	}
-	u, err := url.Parse(raw)
-	if err != nil {
-		return err
-	}
-	if !u.IsAbs() {
-		return fmt.Errorf("issuer must be absolute")
-	}
-	if !strings.EqualFold(u.Scheme, "https") {
-		return fmt.Errorf("issuer scheme must be https, got %q", u.Scheme)
-	}
-	if strings.TrimSpace(u.Host) == "" {
-		return fmt.Errorf("issuer missing host")
-	}
-	if u.User != nil {
-		return fmt.Errorf("issuer must not contain userinfo")
-	}
-	if u.RawQuery != "" {
-		return fmt.Errorf("issuer must not contain query")
-	}
-	if u.Fragment != "" {
-		return fmt.Errorf("issuer must not contain fragment")
-	}
-	return nil
-}
 
 type DingTalkConnectConfig struct {
 	Enabled             bool   `mapstructure:"enabled"`
@@ -2219,7 +2185,6 @@ func setDefaults() {
 	// 雪浪 OAuth Authorization Server（授权服务器一方，独立于外部 IdP 的 oidc_connect）。
 	// 第一轮默认关闭，且不实现 OIDC（不签发 id_token）。
 	viper.SetDefault("oauth_server.enabled", false)
-	viper.SetDefault("oauth_server.issuer", "https://api.xuelanglm.com")
 	viper.SetDefault("oauth_server.client_id", "")
 	viper.SetDefault("oauth_server.redirect_uri", "meacowork://oauth/callback")
 	viper.SetDefault("oauth_server.authorization_code_ttl", 60*time.Second)
@@ -2227,6 +2192,10 @@ func setDefaults() {
 	viper.SetDefault("oauth_server.refresh_token_absolute_ttl", 720*time.Hour) // 30 天
 	viper.SetDefault("oauth_server.refresh_token_idle_ttl", 168*time.Hour)     // 7 天
 	viper.SetDefault("oauth_server.require_pkce_s256", true)
+	// 2026-10-19：注册默认值以支持 OAUTH_SERVER_COOKIE_SECURE 环境变量。
+	// 2026-10-19：按部署要求默认兼容 HTTP，HTTPS 可显式设 true。
+	// viper.SetDefault("oauth_server.cookie_secure", true)
+	viper.SetDefault("oauth_server.cookie_secure", false)
 	// 2026-09-14：新签发 OAuth 凭据默认使用 v2 HMAC；v1 保留为历史 SHA-256 读取兼容。
 	viper.SetDefault("oauth_server.hash_key_version", 2)
 	viper.SetDefault("oauth_server.hash_key", "")
@@ -3149,9 +3118,6 @@ func (c *Config) Validate() error {
 	if c.OAuthServer.Enabled {
 		if strings.TrimSpace(c.OAuthServer.ClientID) == "" {
 			return fmt.Errorf("oauth_server.client_id is required when oauth_server.enabled=true")
-		}
-		if err := validateOAuthServerIssuer(c.OAuthServer.Issuer); err != nil {
-			return fmt.Errorf("oauth_server.issuer invalid: %w", err)
 		}
 		if c.OAuthServer.RedirectURI != oauthServerRedirectURI {
 			return fmt.Errorf("oauth_server.redirect_uri must be exactly %s (first-phase fixed callback)", oauthServerRedirectURI)

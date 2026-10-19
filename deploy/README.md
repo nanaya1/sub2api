@@ -46,11 +46,17 @@ This directory contains files for deploying Sub2API on Linux servers and Apple-s
 
    `client_id` 必须与桌面端一致；`redirect_uri` 当前仅支持 `meacowork://oauth/callback`。
 
-2. **config.yaml 关键项**（启动 fail-fast 校验）：`client_id` 非空、`issuer` 必须 https、`redirect_uri` 恰为 `meacowork://oauth/callback`、强制 PKCE S256。
+2. **config.yaml 关键项**（启动 fail-fast 校验）：`client_id` 非空、`redirect_uri` 恰为 `meacowork://oauth/callback`、强制 PKCE S256。
 
 3. **给目标用户开通订阅**（授权后创建托管 Key 的前置条件）：管理后台「分组管理」创建类型为 `subscription` 的分组并保持启用，再到「订阅管理」给用户开通订阅。缺这一步，用户授权流程会以 403 结束。
 
 ---
+
+## HTTP OAuth Cookie 兼容配置（2026-10-19）
+
+OAuth Cookie 默认兼容 HTTP（`oauth_server.cookie_secure: false` / `OAUTH_SERVER_COOKIE_SECURE=false`）。HTTPS 部署可显式设置为 `true`。该选项同步控制 `oauth_browser` 和 `oauth_csrf`，保留 HttpOnly 与 SameSite=Lax，且不根据代理头自动降级。
+
+Docker Compose 用户在 `.env` 设置该变量后，应确认服务 `environment` 已透传该变量，再重新创建容器（单纯 restart 不会更新容器环境变量）。更新后从客户端重新发起授权，不要复用旧 transaction_id。HTTP 下登录凭据、授权码和令牌也没有传输加密，应限制在可信网络中使用。
 
 ## Apple container Deployment
 
