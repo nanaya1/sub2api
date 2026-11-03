@@ -194,6 +194,7 @@ func ProvideHandlers(
 	modelPlazaHandler *ModelPlazaHandler,
 	asyncImageHandler *AsyncImageHandler,
 	batchImageHandler *BatchImageHandler,
+	provisioningHandler *ProvisioningHandler,
 	oauthTokenHandler *OAuthTokenHandler,
 	oauthRevokeHandler *OAuthRevokeHandler,
 	oauthAuthorizeHandler *OAuthAuthorizeHandler,
@@ -226,6 +227,7 @@ func ProvideHandlers(
 		ModelPlaza:       modelPlazaHandler,
 		AsyncImage:       asyncImageHandler,
 		BatchImage:       batchImageHandler,
+		Provisioning:     provisioningHandler,
 		OAuthToken:       oauthTokenHandler,
 		OAuthRevoke:      oauthRevokeHandler,
 		OAuthAuthorize:   oauthAuthorizeHandler,
@@ -285,6 +287,7 @@ var ProviderSet = wire.NewSet(
 	NewModelPlazaHandler,
 	NewAsyncImageHandler,
 	ProvideBatchImageHandler,
+	NewProvisioningHandler,
 
 	// Admin handlers
 	admin.NewDashboardHandler,

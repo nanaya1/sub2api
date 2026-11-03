@@ -105,6 +105,7 @@ type Config struct {
 	BatchImage              BatchImageConfig              `mapstructure:"batch_image"`
 	ImageStorage            ImageStorageConfig            `mapstructure:"image_storage"`
 	Plugins                 PluginConfig                  `mapstructure:"plugins"`
+	Provisioning             ProvisioningConfig            `mapstructure:"provisioning"`
 }
 
 // PluginConfig 控制管理员手动上传的本地进程插件。
@@ -2706,6 +2707,10 @@ func setEnvReachableDefaults() {
 	viper.SetDefault("dingtalk_connect.sync_corp_email", false)
 	viper.SetDefault("dingtalk_connect.sync_corp_email_attr_key", "")
 	viper.SetDefault("dingtalk_connect.sync_corp_email_attr_name", "")
+
+	// 主服务 Provisioning 接口默认关闭；API Key 仅允许通过配置文件或 PROVISIONING_API_KEY 注入。
+	viper.SetDefault("provisioning.enabled", false)
+	viper.SetDefault("provisioning.api_key", "")
 }
 
 func (c *Config) Validate() error {
