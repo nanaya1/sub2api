@@ -115,6 +115,12 @@ services:
       - TOTP_ENCRYPTION_KEY=${TOTP_ENCRYPTION_KEY:-}
 
       # =======================================================================
+      # 主服务用户/分组同步接口：默认关闭，开启时需在 .env 中配置独立同步密钥。
+      # =======================================================================
+      - PROVISIONING_ENABLED=${PROVISIONING_ENABLED:-false}
+      - PROVISIONING_API_KEY=${PROVISIONING_API_KEY:-}
+
+      # =======================================================================
       # Snowwave OAuth Authorization Server
       # Disabled by default. When enabled, OAUTH_SERVER_HASH_KEY must contain
       # at least 32 bytes and must be injected from a secret store or .env.
