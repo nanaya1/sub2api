@@ -16,6 +16,9 @@ This directory contains files for deploying Sub2API on Linux servers and Apple-s
 |------|-------------|
 | `docker-compose.yml` | Docker Compose configuration (named volumes) |
 | `docker-compose.local.yml` | Docker Compose configuration (local directories, easy migration) |
+| `docker-compose.infra.yml` | PostgreSQL 17 + Redis 7 only, with separate data volumes and localhost ports |
+| `.env.infra.example` | Environment template for the PostgreSQL 17 + Redis 7 stack |
+| `INFRA_CN.md` | PostgreSQL 17 与 Redis 7 独立部署及主服务连接说明（中文） |
 | `docker-deploy.sh` | **One-click Docker deployment script (recommended)** |
 | `apple-container.sh` | Native Apple `container` lifecycle script |
 | `APPLE_CONTAINER.md` | Apple `container` deployment and operations guide |
