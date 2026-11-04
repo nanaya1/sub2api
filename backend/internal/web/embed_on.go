@@ -354,7 +354,9 @@ func tryServeOverrideFile(c *gin.Context, overrideDir, cleanPath string) bool {
 
 func shouldBypassEmbeddedFrontend(path string) bool {
 	trimmed := strings.TrimSpace(path)
+	// 内部投影接口必须先进入独立密钥鉴权，不能被 SPA 首页回退拦截
 	return strings.HasPrefix(trimmed, "/oauth2/") ||
+		strings.HasPrefix(trimmed, "/internal/") ||
 		strings.HasPrefix(trimmed, "/api/") ||
 		strings.HasPrefix(trimmed, "/v1/") ||
 		strings.HasPrefix(trimmed, "/v1beta/") ||
