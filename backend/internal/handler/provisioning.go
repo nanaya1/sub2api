@@ -86,6 +86,21 @@ func (h *ProvisioningHandler) DisableGroup(c *gin.Context) {
 	response.Success(c, result)
 }
 
+// RemoveGroup 接收主服务分组删除事件，重复请求保持幂等
+func (h *ProvisioningHandler) RemoveGroup(c *gin.Context) {
+	var req provisioningGroupRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid provisioning group request")
+		return
+	}
+	result, err := h.service.RemoveGroup(c.Request.Context(), req.Source, req.TenantKey, req.ExternalGroupID, req.Version)
+	if err != nil {
+		writeProvisioningError(c, err)
+		return
+	}
+	response.Success(c, result)
+}
+
 func writeProvisioningError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, service.ErrProvisioningInvalidRequest):

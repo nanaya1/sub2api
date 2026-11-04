@@ -21,11 +21,12 @@ var (
 // ProvisioningService 负责外部用户/分组投影的幂等落库。
 // 业务数据仍由主服务维护，当前平台只保存本地投影和外部 ID 映射。
 type ProvisioningService struct {
-	db *sql.DB
+	db           *sql.DB
+	adminService AdminService
 }
 
-func NewProvisioningService(db *sql.DB) *ProvisioningService {
-	return &ProvisioningService{db: db}
+func NewProvisioningService(db *sql.DB, adminService AdminService) *ProvisioningService {
+	return &ProvisioningService{db: db, adminService: adminService}
 }
 
 type ProvisioningUserUpsertInput struct {
@@ -165,7 +166,7 @@ func (s *ProvisioningService) UpsertGroup(ctx context.Context, input Provisionin
 	result := &ProvisioningGroupResult{Source: input.Source, TenantKey: input.TenantKey, ExternalGroupID: input.ExternalGroupID, Status: status}
 	var existingStatus string
 	err = tx.QueryRowContext(ctx, `
-		SELECT local_group_id, version, members_version, status
+		SELECT COALESCE(local_group_id, 0), version, members_version, status
 		FROM provisioning_group_bindings
 		WHERE source = $1 AND tenant_key = $2 AND external_group_id = $3
 		FOR UPDATE`, input.Source, input.TenantKey, input.ExternalGroupID).
@@ -186,6 +187,9 @@ func (s *ProvisioningService) UpsertGroup(ctx context.Context, input Provisionin
 		}
 	} else if err != nil {
 		return nil, fmt.Errorf("load provisioning group binding: %w", err)
+	} else if existingStatus == "deleted" {
+		// 已删除外部身份永久保留映射，延迟或重放的新增事件不能复活历史分组
+		result.Status = existingStatus
 	} else if input.Version >= result.Version {
 		if err := updateProvisioningGroup(ctx, tx, result.LocalGroupID, input, status); err != nil {
 			return nil, err
@@ -229,7 +233,7 @@ func (s *ProvisioningService) ReplaceGroupMembers(ctx context.Context, input Pro
 	}
 	var result ProvisioningGroupResult
 	if err := tx.QueryRowContext(ctx, `
-		SELECT local_group_id, version, members_version, status
+		SELECT COALESCE(local_group_id, 0), version, members_version, status
 		FROM provisioning_group_bindings
 		WHERE source = $1 AND tenant_key = $2 AND external_group_id = $3
 		FOR UPDATE`, input.Source, input.TenantKey, input.ExternalGroupID).
@@ -238,6 +242,10 @@ func (s *ProvisioningService) ReplaceGroupMembers(ctx context.Context, input Pro
 		return nil, fmt.Errorf("load provisioning group for members: %w", err)
 	}
 	result.Source, result.TenantKey, result.ExternalGroupID = input.Source, input.TenantKey, input.ExternalGroupID
+	if result.Status == "deleted" {
+		// 删除后的成员事件只确认结果，不恢复成员或渠道授权
+		return &result, commitProvisioningTx(tx, &result)
+	}
 	if input.Version < result.MembersVersion {
 		return &result, commitProvisioningTx(tx, &result)
 	}
