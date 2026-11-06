@@ -1279,5 +1279,6 @@ image_storage:
 # 主系统个人模型门户，密钥必须独立于Provisioning
 cowork_portal:
   enabled: false
-  # 推荐通过COWORK_PORTAL_API_KEY注入至少32字符的独立随机密钥
+  # 使用 openssl rand -hex 32 独立生成，建议通过 COWORK_PORTAL_API_KEY 环境变量注入
+  # 至少32字符；主系统配置相同密钥，不复用 PROVISIONING_API_KEY、管理员 Key 或 OAuth 密钥
   api_key: ""
