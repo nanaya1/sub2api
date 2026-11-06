@@ -20,7 +20,6 @@ func NewProvisioningHandler(provisioningService *service.ProvisioningService) *P
 
 type provisioningUserRequest struct {
 	Source         string `json:"source" binding:"required"`
-	TenantKey      string `json:"tenant_key" binding:"required"`
 	ExternalUserID string `json:"external_user_id" binding:"required"`
 	Email          string `json:"email"`
 	Username       string `json:"username"`
@@ -38,51 +37,82 @@ type provisioningGroupRequest struct {
 	Version         int64  `json:"version"`
 }
 
-type provisioningMembersRequest struct {
-	Source          string   `json:"source" binding:"required"`
-	TenantKey       string   `json:"tenant_key" binding:"required"`
-	ExternalGroupID string   `json:"external_group_id" binding:"required"`
-	ExternalUserIDs []string `json:"external_user_ids"`
-	Version         int64    `json:"version"`
+type provisioningUserGroupsRequest struct {
+	Source         string                               `json:"source" binding:"required"`
+	ExternalUserID string                               `json:"external_user_id" binding:"required"`
+	Groups         []service.ProvisioningGroupReference `json:"groups" binding:"required"`
+	Version        int64                                `json:"version" binding:"required,gt=0"`
 }
 
 func (h *ProvisioningHandler) UpsertUser(c *gin.Context) {
 	var req provisioningUserRequest
-	if err := c.ShouldBindJSON(&req); err != nil { response.Error(c, http.StatusBadRequest, "invalid provisioning user request"); return }
-	result, err := h.service.UpsertUser(c.Request.Context(), service.ProvisioningUserUpsertInput{Source: req.Source, TenantKey: req.TenantKey, ExternalUserID: req.ExternalUserID, Email: req.Email, Username: req.Username, Status: req.Status, Version: req.Version})
-	if err != nil { writeProvisioningError(c, err); return }
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid provisioning user request")
+		return
+	}
+	result, err := h.service.UpsertUser(c.Request.Context(), service.ProvisioningUserUpsertInput{Source: req.Source, ExternalUserID: req.ExternalUserID, Email: req.Email, Username: req.Username, Status: req.Status, Version: req.Version})
+	if err != nil {
+		writeProvisioningError(c, err)
+		return
+	}
 	response.Success(c, result)
 }
 
 func (h *ProvisioningHandler) UpsertGroup(c *gin.Context) {
 	var req provisioningGroupRequest
-	if err := c.ShouldBindJSON(&req); err != nil { response.Error(c, http.StatusBadRequest, "invalid provisioning group request"); return }
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid provisioning group request")
+		return
+	}
 	result, err := h.service.UpsertGroup(c.Request.Context(), service.ProvisioningGroupUpsertInput{Source: req.Source, TenantKey: req.TenantKey, ExternalGroupID: req.ExternalGroupID, Name: req.Name, Description: req.Description, Status: req.Status, Version: req.Version})
-	if err != nil { writeProvisioningError(c, err); return }
+	if err != nil {
+		writeProvisioningError(c, err)
+		return
+	}
 	response.Success(c, result)
 }
 
-func (h *ProvisioningHandler) ReplaceGroupMembers(c *gin.Context) {
-	var req provisioningMembersRequest
-	if err := c.ShouldBindJSON(&req); err != nil { response.Error(c, http.StatusBadRequest, "invalid provisioning group members request"); return }
-	result, err := h.service.ReplaceGroupMembers(c.Request.Context(), service.ProvisioningGroupMembersInput{Source: req.Source, TenantKey: req.TenantKey, ExternalGroupID: req.ExternalGroupID, ExternalUserIDs: req.ExternalUserIDs, Version: req.Version})
-	if err != nil { writeProvisioningError(c, err); return }
+// ReplaceUserGroups 接收全局用户的跨企业完整分组集合，空数组明确清空授权
+func (h *ProvisioningHandler) ReplaceUserGroups(c *gin.Context) {
+	var req provisioningUserGroupsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid provisioning user groups request")
+		return
+	}
+	result, err := h.service.ReplaceUserGroups(c.Request.Context(), service.ProvisioningUserGroupsInput{Source: req.Source, ExternalUserID: req.ExternalUserID, Groups: req.Groups, Version: req.Version})
+	if err != nil {
+		writeProvisioningError(c, err)
+		return
+	}
 	response.Success(c, result)
 }
 
-func (h *ProvisioningHandler) DisableUser(c *gin.Context) {
+// RemoveUser 只接收全局账号删除事件，不接受企业成员停用事件
+func (h *ProvisioningHandler) RemoveUser(c *gin.Context) {
 	var req provisioningUserRequest
-	if err := c.ShouldBindJSON(&req); err != nil { response.Error(c, http.StatusBadRequest, "invalid provisioning user request"); return }
-	result, err := h.service.DisableUser(c.Request.Context(), req.Source, req.TenantKey, req.ExternalUserID, req.Version)
-	if err != nil { writeProvisioningError(c, err); return }
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid provisioning user request")
+		return
+	}
+	result, err := h.service.RemoveUser(c.Request.Context(), req.Source, req.ExternalUserID, req.Version)
+	if err != nil {
+		writeProvisioningError(c, err)
+		return
+	}
 	response.Success(c, result)
 }
 
 func (h *ProvisioningHandler) DisableGroup(c *gin.Context) {
 	var req provisioningGroupRequest
-	if err := c.ShouldBindJSON(&req); err != nil { response.Error(c, http.StatusBadRequest, "invalid provisioning group request"); return }
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid provisioning group request")
+		return
+	}
 	result, err := h.service.DisableGroup(c.Request.Context(), req.Source, req.TenantKey, req.ExternalGroupID, req.Version)
-	if err != nil { writeProvisioningError(c, err); return }
+	if err != nil {
+		writeProvisioningError(c, err)
+		return
+	}
 	response.Success(c, result)
 }
 

@@ -12,8 +12,8 @@ func RegisterProvisioningRoutes(r *gin.Engine, h *handler.Handlers, auth middlew
 	group.Use(gin.HandlerFunc(auth))
 	group.POST("/user/upsert", h.Provisioning.UpsertUser)
 	group.POST("/group/upsert", h.Provisioning.UpsertGroup)
-	group.POST("/group/replace-members", h.Provisioning.ReplaceGroupMembers)
-	group.POST("/user/disable", h.Provisioning.DisableUser)
+	group.POST("/user/replace-groups", h.Provisioning.ReplaceUserGroups)
+	group.POST("/user/remove", h.Provisioning.RemoveUser)
 	group.POST("/group/disable", h.Provisioning.DisableGroup)
 	group.POST("/group/remove", h.Provisioning.RemoveGroup)
 }
