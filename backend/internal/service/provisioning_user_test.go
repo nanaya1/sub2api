@@ -6,6 +6,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"net/mail"
+	"strings"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -184,8 +186,41 @@ func (s *provisioningCacheStub) InvalidateAuthCacheByUserID(_ context.Context, i
 	s.users = append(s.users, id)
 }
 
+func expectProvisioningEmailCandidate(mock sqlmock.Sqlmock, email string, localUserID int64, occupied bool) {
+	mock.ExpectExec("SELECT pg_advisory_xact_lock").WithArgs("provisioning/email/" + email).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery("SELECT EXISTS").WithArgs(email, localUserID).WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(occupied))
+}
+
+// 验证邮箱可读性、真实邮箱优先、中文和特殊字符，以及本地部分的字节上限。
+func TestProvisioningUserEmail(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		username string
+		email    string
+		want     string
+	}{
+		{name: "username", username: " ZhangSan ", want: "zhangsan@sub2api.local"},
+		{name: "real_email", username: "zhangsan", email: " user@example.com ", want: "user@example.com"},
+		{name: "chinese", username: "张三", want: "张三@sub2api.local"},
+		{name: "special_characters", username: "name@company / test", want: "name-company---test@sub2api.local"},
+		{name: "dots", username: ".first..last.", want: "first.last@sub2api.local"},
+		{name: "no_username", want: "7@sub2api.local"},
+		{name: "only_special_characters", username: "@ /", want: "user@sub2api.local"},
+		{name: "long_username", username: strings.Repeat("a", 100), want: strings.Repeat("a", 64) + "@sub2api.local"},
+		{name: "long_chinese", username: strings.Repeat("张", 30), want: strings.Repeat("张", 21) + "@sub2api.local"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := provisioningUserEmail(ProvisioningUserUpsertInput{Source: "cowork", ExternalUserID: "7", Username: tc.username, Email: tc.email})
+			require.Equal(t, tc.want, got)
+			address, err := mail.ParseAddress(got)
+			require.NoError(t, err)
+			require.Equal(t, got, address.Address)
+		})
+	}
+}
+
 func TestProvisioningGlobalUserUpsert(t *testing.T) {
-	for _, scenario := range []string{"new", "update", "stale", "duplicate", "commit_failed"} {
+	for _, scenario := range []string{"new", "update", "stale", "duplicate", "commit_failed", "new_collision", "update_collision", "email_conflict", "real_email", "renamed"} {
 		t.Run(scenario, func(t *testing.T) {
 			db, mock, err := sqlmock.New()
 			require.NoError(t, err)
@@ -193,12 +228,19 @@ func TestProvisioningGlobalUserUpsert(t *testing.T) {
 			cache := &provisioningCacheStub{}
 			svc := NewProvisioningService(db, nil, cache)
 			input := ProvisioningUserUpsertInput{Source: "cowork", ExternalUserID: "7", Username: "updated", Status: "disabled", Version: 200}
-			if scenario == "new" {
+			email := "updated@sub2api.local"
+			if scenario == "real_email" {
+				input.Email, email = "real@example.com", "real@example.com"
+			}
+			if scenario == "renamed" {
+				input.Username, email = "renamed", "renamed@sub2api.local"
+			}
+			newUser := scenario == "new" || scenario == "new_collision" || scenario == "email_conflict"
+			collision := scenario == "new_collision" || scenario == "update_collision" || scenario == "email_conflict"
+			if newUser {
 				mock.ExpectBegin()
 				mock.ExpectExec("SELECT pg_advisory_xact_lock").WithArgs("cowork/user/7").WillReturnResult(sqlmock.NewResult(0, 1))
 				mock.ExpectQuery("FROM provisioning_user_bindings").WithArgs("cowork", "7").WillReturnError(sql.ErrNoRows)
-				mock.ExpectQuery("INSERT INTO users .*TRUE.*RETURNING id").WithArgs(provisioningUserEmail(input), sqlmock.AnyArg(), "disabled", "updated").WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(10))
-				mock.ExpectExec("INSERT INTO provisioning_user_bindings").WithArgs("cowork", "7", int64(10), int64(200), "disabled").WillReturnResult(sqlmock.NewResult(0, 1))
 			} else {
 				if scenario == "stale" {
 					input.Version = 99
@@ -207,20 +249,41 @@ func TestProvisioningGlobalUserUpsert(t *testing.T) {
 					input.Version = 100
 				}
 				expectGlobalUser(mock, 10, 100, 150, "active")
-				if scenario != "stale" && scenario != "duplicate" {
-					mock.ExpectExec("UPDATE users SET email").WithArgs(int64(10), provisioningUserEmail(input), "updated", "disabled").WillReturnResult(sqlmock.NewResult(0, 1))
+			}
+			if scenario != "stale" && scenario != "duplicate" {
+				localUserID := int64(10)
+				if newUser {
+					localUserID = 0
+				}
+				if input.Email == "" {
+					expectProvisioningEmailCandidate(mock, email, localUserID, collision)
+					if collision {
+						email = "updated-d4e09fd31afe@sub2api.local"
+						expectProvisioningEmailCandidate(mock, email, localUserID, scenario == "email_conflict")
+					}
+				}
+				if newUser && scenario != "email_conflict" {
+					mock.ExpectQuery("INSERT INTO users .*TRUE.*RETURNING id").WithArgs(email, sqlmock.AnyArg(), "disabled", input.Username).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(10))
+					mock.ExpectExec("INSERT INTO provisioning_user_bindings").WithArgs("cowork", "7", int64(10), int64(200), "disabled").WillReturnResult(sqlmock.NewResult(0, 1))
+				} else if !newUser {
+					mock.ExpectExec("UPDATE users SET email").WithArgs(int64(10), email, input.Username, "disabled").WillReturnResult(sqlmock.NewResult(0, 1))
 					mock.ExpectExec("UPDATE provisioning_user_bindings SET version").WithArgs("cowork", "7", int64(200), "disabled").WillReturnResult(sqlmock.NewResult(0, 1))
 				}
 			}
 			if scenario == "commit_failed" {
 				mock.ExpectCommit().WillReturnError(errors.New("unknown commit"))
+			} else if scenario == "email_conflict" {
+				mock.ExpectRollback()
 			} else {
 				mock.ExpectCommit()
 			}
 			result, err := svc.UpsertUser(context.Background(), input)
-			if scenario == "commit_failed" {
+			if scenario == "commit_failed" || scenario == "email_conflict" {
 				require.Error(t, err)
 				require.Empty(t, cache.users)
+				if scenario == "email_conflict" {
+					require.ErrorIs(t, err, ErrEmailExists)
+				}
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, int64(10), result.LocalUserID)

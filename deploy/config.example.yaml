@@ -1275,3 +1275,9 @@ image_storage:
   presign_expiry_hours: 24
   # 当上游返回的是图片 url 时，下载该图片再转存的字节上限（默认 32MB）
   max_download_bytes: 33554432
+
+# 主系统个人模型门户，密钥必须独立于Provisioning
+cowork_portal:
+  enabled: false
+  # 推荐通过COWORK_PORTAL_API_KEY注入至少32字符的独立随机密钥
+  api_key: ""

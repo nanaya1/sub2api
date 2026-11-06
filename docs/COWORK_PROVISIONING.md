@@ -8,7 +8,9 @@
 
 同步组强制专属，同步用户限制公开组。user/replace-groups在一个事务里清空全部旧授权并写入快照，包含人工多加的授权；groups=[]明确清空，省略或null拒绝。Key不会自动换组，撤权后原Key不能继续使用旧组。提交后显式撤销鉴权缓存，持久化失效Outbox兜底。
 
-账号元数据和授权各自维护version、groups_version，过期和同版本请求只返回已有结果；用户和组正式删除后保留身份墓碑，之后的upsert或授权请求不能复活。删除先到时可保存无本地ID的墓碑。主服务据返回的实际版本确认，不按请求版本猜测。账号没有邮箱时用全局身份哈希生成provisioning.invalid占位邮箱，创建随机密码，不复制主系统密码。
+账号元数据和授权各自维护version、groups_version，过期和同版本请求只返回已有结果；用户和组正式删除后保留身份墓碑，之后的upsert或授权请求不能复活。删除先到时可保存无本地ID的墓碑。主服务据返回的实际版本确认，不按请求版本猜测。同步时创建随机密码，不复制主系统密码。
+
+账号没有邮箱时，优先使用`用户名@sub2api.local`占位邮箱，例如`zhangsan@sub2api.local`；用户名为空时使用external_user_id。名称转为小写，保留中文、字母、数字及`._-`，其他字符替换为`-`，合并连续句点、去掉首尾分隔符，本地部分最多64字节。清理后为空时使用`user`。地址被其他未删除账号占用时，追加由source+external_user_id生成的12字符稳定哈希后缀，并缩短名称以保持长度限制；后缀地址也被占用则报冲突，不认领已有账号。候选地址在同一事务里加锁后检查占用，更新时排除当前用户。真实邮箱优先，用户名变更或邮箱清空时重新按规则生成；补填真实邮箱后直接同步替换。旧版占位邮箱在下一次更高version的资料同步时更新，无需清空用户或映射表。占位地址只用于满足邮箱必填及唯一约束，没有真实收件箱，用户身份仍只取决于source+external_user_id。
 
 ## HTTP契约
 
@@ -32,4 +34,4 @@
 
 ## 验证
 
-backend内执行：`go test -tags unit ./internal/service -run TestProvisioning -count=1`、`go test ./internal/handler ./internal/server/routes ./cmd/server -run '^$'`、`go test ./migrations`。测试覆盖跨企业完整授权、空集合、缺依赖回滚、禁用账号保留组、乱序重放、正式删除和墓碑、缓存失效。真实SQL验证只使用临时PostgreSQL，不自动修改业务库。
+backend内执行：`go test -tags unit ./internal/service -run TestProvisioning -count=1`、`go test ./internal/handler ./internal/server/routes ./cmd/server -run '^$'`、`go test ./migrations`。测试覆盖跨企业完整授权、空集合、缺依赖回滚、禁用账号保留组、乱序重放、正式删除和墓碑、缓存失效、占位邮箱格式与重名避让、真实邮箱替换。真实SQL验证只使用临时PostgreSQL，不自动修改业务库。

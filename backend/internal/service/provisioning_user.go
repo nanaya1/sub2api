@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -265,12 +267,69 @@ func provisioningUserEmail(input ProvisioningUserUpsertInput) string {
 	if email := strings.TrimSpace(input.Email); email != "" {
 		return email
 	}
-	// 空邮箱以全局身份生成稳定占位值，资料清空时也不会继续保留旧邮箱
+	name := strings.TrimSpace(input.Username)
+	if name == "" {
+		name = input.ExternalUserID
+	}
+	// 保留可读用户名，将邮箱分隔符、空格等替换，避免生成多个 @ 或非法地址。
+	name = strings.Map(func(r rune) rune {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || strings.ContainsRune("._-", r) {
+			return unicode.ToLower(r)
+		}
+		return '-'
+	}, name)
+	for strings.Contains(name, "..") {
+		name = strings.ReplaceAll(name, "..", ".")
+	}
+	name = truncateProvisioningEmailName(name, 64)
+	if name == "" {
+		name = "user"
+	}
+	return name + "@sub2api.local"
+}
+
+func truncateProvisioningEmailName(name string, maxBytes int) string {
+	if len(name) > maxBytes {
+		// 邮箱本地部分最多 64 字节，截断时保留完整中文字符。
+		name = name[:maxBytes]
+		for !utf8.ValidString(name) {
+			name = name[:len(name)-1]
+		}
+	}
+	return strings.Trim(name, ".-_")
+}
+
+func resolveProvisioningUserEmail(ctx context.Context, tx *sql.Tx, input ProvisioningUserUpsertInput, localUserID int64) (string, error) {
+	email := provisioningUserEmail(input)
+	if strings.TrimSpace(input.Email) != "" {
+		return email, nil
+	}
 	digest := sha256.Sum256([]byte(input.Source + "\x00" + input.ExternalUserID))
-	return hex.EncodeToString(digest[:]) + "@provisioning.invalid"
+	name := strings.TrimSuffix(email, "@sub2api.local")
+	fallback := truncateProvisioningEmailName(name, 51) + "-" + hex.EncodeToString(digest[:6]) + "@sub2api.local"
+	for _, candidate := range []string{email, fallback} {
+		// 按候选邮箱串行分配，避免不同外部用户并发同步时选中同一占位地址。
+		if err := lockProvisioningKey(ctx, tx, "provisioning/email/"+candidate); err != nil {
+			return "", err
+		}
+		var occupied bool
+		if err := tx.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM users
+			WHERE email = $1 AND deleted_at IS NULL AND id <> $2)`, candidate, localUserID).Scan(&occupied); err != nil {
+			return "", err
+		}
+		if !occupied {
+			return candidate, nil
+		}
+	}
+	// 已有账号只用于判断地址占用，绝不能按邮箱认领或覆盖其他用户。
+	return "", ErrEmailExists
 }
 
 func createProvisioningUser(ctx context.Context, tx *sql.Tx, input ProvisioningUserUpsertInput, status string) (int64, error) {
+	email, err := resolveProvisioningUserEmail(ctx, tx, input, 0)
+	if err != nil {
+		return 0, err
+	}
 	password := make([]byte, 24)
 	if _, err := rand.Read(password); err != nil {
 		return 0, err
@@ -285,17 +344,21 @@ func createProvisioningUser(ctx context.Context, tx *sql.Tx, input ProvisioningU
 	}
 	var id int64
 	err = tx.QueryRowContext(ctx, `INSERT INTO users (email, password_hash, role, status, username, signup_source, restrict_public_groups)
-		VALUES ($1, $2, 'user', $3, $4, 'email', TRUE) RETURNING id`, provisioningUserEmail(input), string(hash), status, username).Scan(&id)
+		VALUES ($1, $2, 'user', $3, $4, 'email', TRUE) RETURNING id`, email, string(hash), status, username).Scan(&id)
 	return id, err
 }
 
 func updateProvisioningUser(ctx context.Context, tx *sql.Tx, id int64, input ProvisioningUserUpsertInput, status string) error {
+	email, err := resolveProvisioningUserEmail(ctx, tx, input, id)
+	if err != nil {
+		return err
+	}
 	username := strings.TrimSpace(input.Username)
 	if username == "" {
 		username = input.ExternalUserID
 	}
 	result, err := tx.ExecContext(ctx, `UPDATE users SET email = $2, username = $3, status = $4,
-		restrict_public_groups = TRUE, updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL`, id, provisioningUserEmail(input), username, status)
+		restrict_public_groups = TRUE, updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL`, id, email, username, status)
 	if err != nil {
 		return err
 	}

@@ -119,6 +119,8 @@ services:
       # =======================================================================
       - PROVISIONING_ENABLED=${PROVISIONING_ENABLED:-false}
       - PROVISIONING_API_KEY=${PROVISIONING_API_KEY:-}
+      - COWORK_PORTAL_ENABLED=${COWORK_PORTAL_ENABLED:-false}
+      - COWORK_PORTAL_API_KEY=${COWORK_PORTAL_API_KEY:-}
 
       # =======================================================================
       # Snowwave OAuth Authorization Server

@@ -395,6 +395,13 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 	return s.redeem(ctx, userID, code, enforceRedeemRateLimit)
 }
 
+// RedeemBalanceForPortal 在正式兑换流程内校验余额类型，保留失败计数及事务边界
+func (s *RedeemService) RedeemBalanceForPortal(ctx context.Context, userID int64, code string) (*RedeemCode, error) {
+	return s.redeem(context.WithValue(ctx, portalBalanceOnlyKey{}, true), userID, code, enforceRedeemRateLimit)
+}
+
+type portalBalanceOnlyKey struct{}
+
 // redeemForPaymentFulfillment is restricted to trusted payment fulfillment.
 // Payment retries must not be blocked by, or contribute to, a user's public
 // redeem failure counter. All code validation and transactional updates remain
@@ -434,6 +441,12 @@ func (s *RedeemService) redeem(ctx context.Context, userID int64, code string, r
 			return nil, ErrRedeemCodeNotFound
 		}
 		return nil, fmt.Errorf("get redeem code: %w", err)
+	}
+
+	// 主系统只能兑换余额，不允许通过兑换订阅改变同步授权
+	if onlyBalance, _ := ctx.Value(portalBalanceOnlyKey{}).(bool); onlyBalance && redeemCode.Type != RedeemTypeBalance {
+		s.incrementRedeemErrorCount(ctx, userID)
+		return nil, unsupportedRedeemTypeError(redeemCode.Type)
 	}
 
 	// 检查兑换码状态和码本身的过期时间
