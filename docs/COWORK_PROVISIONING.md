@@ -1,5 +1,15 @@
 # cowork-server 用户与分组投影
 
+## 只读数据核对
+
+POST /internal/v1/provisioning/inspect复用独立X-Provisioning-Key鉴权，无数据库迁移。请求为{source,objects:[{object_type,external_id,tenant_key}]}，object_type为user/group，用户tenant_key为空，组必须带企业键；禁止重复身份、未知字段和尾随JSON，最多64KiB及100对象
+
+在10秒只读REPEATABLE READ事务中读取映射和真实实体，返回code=0、data={source,items}，按请求顺序完整回显身份。每项包含binding_found、local_id、version、groups_version、binding_status、entity_exists、deleted、name、description、status、restricted、groups、unmanaged_groups；用户restricted为restrict_public_groups，组为is_exclusive。首次删除墓碑允许local_id=0，不存在映射仍返回该身份的空投影
+
+用户groups来自真实user_allowed_groups，只返回当前source唯一且非删除映射对应的有效组身份；其他来源、未映射、已删除组及多映射授权计入unmanaged_groups，不泄露其身份。全请求最多4000授权，超限整体失败，不截断后报一致。不返回邮箱、密码、Key或Token，失败不透传数据库异常，不改变任何业务数据
+
+主系统按其对象分页即时核对，显示本次一致、存在差异、待同步或待复核。修复仍调用已有定向同步生成新版本，不在核对端点自动写库或恢复墓碑。旧版未提供此路由时主系统必须显示待复核。验证包含TestProvisioningInspect及主系统独立临时库真实联调
+
 用户在所有企业共用一个sub2api账号，身份为source+external_user_id。分组身份为source+tenant_key+external_group_id。source必须稳定；主服务全局配置统一目标地址与密钥，不再按企业切换实例。
 
 ## 行为

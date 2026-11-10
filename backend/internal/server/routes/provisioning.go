@@ -10,6 +10,7 @@ import (
 func RegisterProvisioningRoutes(r *gin.Engine, h *handler.Handlers, auth middleware.ProvisioningAuthMiddleware) {
 	group := r.Group("/internal/v1/provisioning")
 	group.Use(gin.HandlerFunc(auth))
+	group.POST("/inspect", h.Provisioning.Inspect)
 	group.POST("/user/upsert", h.Provisioning.UpsertUser)
 	group.POST("/group/upsert", h.Provisioning.UpsertGroup)
 	group.POST("/user/replace-groups", h.Provisioning.ReplaceUserGroups)
