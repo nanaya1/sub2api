@@ -33,6 +33,9 @@ func (s *PaymentService) GetWebhookProviders(ctx context.Context, providerKey, o
 	if outTradeNo != "" {
 		order, err := s.entClient.PaymentOrder.Query().Where(paymentorder.OutTradeNo(outTradeNo)).Only(ctx)
 		if err == nil {
+			if err := s.validateOrderEnvironment(order); err != nil {
+				return nil, err
+			}
 			if psHasPinnedProviderInstance(order) {
 				prov, err := s.getPinnedOrderProvider(ctx, order)
 				if err != nil {
@@ -63,6 +66,9 @@ func (s *PaymentService) GetWebhookProviders(ctx context.Context, providerKey, o
 				return nil, err
 			}
 			return []payment.Provider{prov}, nil
+		}
+		if !dbent.IsNotFound(err) {
+			return nil, fmt.Errorf("lookup webhook order failed")
 		}
 	}
 

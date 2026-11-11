@@ -101,7 +101,7 @@ func TestCreateOrderInTx_WritesProviderSnapshot(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, strconv.FormatInt(instance.ID, 10), valueOrEmpty(order.ProviderInstanceID))
 	require.Equal(t, payment.TypeAlipay, valueOrEmpty(order.ProviderKey))
-	require.Equal(t, float64(2), order.ProviderSnapshot["schema_version"])
+	require.Equal(t, float64(3), order.ProviderSnapshot["schema_version"])
 	require.Equal(t, strconv.FormatInt(instance.ID, 10), order.ProviderSnapshot["provider_instance_id"])
 	require.Equal(t, payment.TypeAlipay, order.ProviderSnapshot["provider_key"])
 	require.Equal(t, "redirect", order.ProviderSnapshot["payment_mode"])

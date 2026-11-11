@@ -109,6 +109,23 @@ func (s *PaymentService) resolveSnapshotOrderProviderInstance(ctx context.Contex
 	if snapshot.ProviderKey != "" && !strings.EqualFold(strings.TrimSpace(inst.ProviderKey), snapshot.ProviderKey) {
 		return nil, fmt.Errorf("order %d provider snapshot key mismatch: snapshot=%s instance=%s", order.ID, snapshot.ProviderKey, inst.ProviderKey)
 	}
+	if inst.ProviderKey == payment.TypeAlipay {
+		var cfg map[string]string
+		var err error
+		if s.configService != nil {
+			cfg, err = s.configService.decryptConfig(inst.Config)
+		} else if s.loadBalancer != nil {
+			cfg, err = s.loadBalancer.GetInstanceConfig(ctx, inst.ID)
+		} else {
+			return nil, fmt.Errorf("payment config unavailable")
+		}
+		if err != nil {
+			return nil, err
+		}
+		if err := s.validateOrderInstanceEnvironment(cfg, order, inst.ProviderKey); err != nil {
+			return nil, err
+		}
+	}
 
 	return inst, nil
 }
@@ -127,12 +144,15 @@ func expectedNotificationProviderKeyForOrder(registry *payment.Registry, order *
 }
 
 func validateProviderSnapshotMetadata(order *dbent.PaymentOrder, providerKey string, metadata map[string]string) error {
-	if order == nil || len(metadata) == 0 {
+	if order == nil {
 		return nil
 	}
 
 	snapshot := psOrderProviderSnapshot(order)
 	if snapshot == nil {
+		return nil
+	}
+	if len(metadata) == 0 {
 		return nil
 	}
 
@@ -169,14 +189,22 @@ func validateProviderSnapshotMetadata(order *dbent.PaymentOrder, providerKey str
 			return fmt.Errorf("wxpay trade_state mismatch: expected SUCCESS, got %s", actual)
 		}
 	case payment.TypeAlipay:
+		appIDKey := "app_id"
+		if metadata["confirmation_source"] == "query" {
+			appIDKey = "authenticated_app_id"
+		}
 		if expected := strings.TrimSpace(snapshot.MerchantAppID); expected != "" {
-			actual := strings.TrimSpace(metadata["app_id"])
+			actual := strings.TrimSpace(metadata[appIDKey])
 			if actual == "" {
 				return fmt.Errorf("alipay app_id missing")
 			}
 			if !strings.EqualFold(expected, actual) {
 				return fmt.Errorf("alipay app_id mismatch: expected %s, got %s", expected, actual)
 			}
+		}
+		// 查单认证上下文由原渠道校验；通知必须核对支付宝实际签名返回的收款身份
+		if snapshot.MerchantID != "" && metadata["confirmation_source"] != "query" && metadata["seller_id"] != snapshot.MerchantID {
+			return fmt.Errorf("alipay seller identity mismatch")
 		}
 	case payment.TypeEasyPay:
 		if expected := strings.TrimSpace(snapshot.MerchantID); expected != "" {

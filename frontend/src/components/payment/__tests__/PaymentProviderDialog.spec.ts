@@ -246,4 +246,23 @@ describe('PaymentProviderDialog payment guide', () => {
 
     expect(wrapper.emitted('save')).toBeUndefined()
   })
+  it('requires the sandbox seller and preserves hidden credentials when editing', async () => {
+    const provider = providerFactory({provider_key: 'alipay', name: 'Sandbox', supported_types: ['alipay'], payment_mode: 'redirect',
+      config: {appId: 'controlled-app', environment: 'sandbox'}})
+    const wrapper = mountDialog({editing: provider})
+    const load = (value: ProviderInstance) => (wrapper.vm as unknown as {loadProvider: (value: ProviderInstance) => void}).loadProvider(value)
+    load(provider)
+    await nextTick()
+    await wrapper.find('form').trigger('submit.prevent')
+    expect(wrapper.emitted('save')).toBeUndefined()
+    load({...provider, config: {...provider.config, sellerId: 'controlled-seller'}})
+    await nextTick()
+    await wrapper.find('form').trigger('submit.prevent')
+    const payload = wrapper.emitted('save')?.[0]?.[0] as {config: Record<string, string>}
+    expect(payload.config.environment).toBe('sandbox')
+    expect(payload.config.sellerId).toBe('controlled-seller')
+    expect(payload.config.privateKey).toBeUndefined()
+    expect(payload.config.publicKey).toBeUndefined()
+  })
+
 })

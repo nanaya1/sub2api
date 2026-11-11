@@ -142,9 +142,6 @@ func TestWebhookConstants(t *testing.T) {
 		assert.Equal(t, int64(1<<20), int64(maxWebhookBodySize))
 	})
 
-	t.Run("webhookLogTruncateLen is 200", func(t *testing.T) {
-		assert.Equal(t, 200, webhookLogTruncateLen)
-	})
 }
 
 func TestExtractOutTradeNo(t *testing.T) {

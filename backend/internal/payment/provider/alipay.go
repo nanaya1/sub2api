@@ -50,6 +50,13 @@ type Alipay struct {
 
 // NewAlipay creates a new Alipay provider instance.
 func NewAlipay(instanceID string, config map[string]string) (*Alipay, error) {
+	env, err := payment.NormalizeEnvironment(config["environment"])
+	if err != nil {
+		return nil, err
+	}
+	if env == payment.EnvironmentSandbox && strings.TrimSpace(config["sellerId"]) == "" {
+		return nil, fmt.Errorf("alipay sandbox requires sellerId")
+	}
 	required := []string{"appId", "privateKey"}
 	for _, k := range required {
 		if config[k] == "" {
@@ -68,7 +75,11 @@ func (a *Alipay) getClient() (*alipay.Client, error) {
 	if a.client != nil {
 		return a.client, nil
 	}
-	client, err := alipay.New(a.config["appId"], a.config["privateKey"], true)
+	environment, err := payment.NormalizeEnvironment(a.config["environment"])
+	if err != nil {
+		return nil, err
+	}
+	client, err := alipay.New(a.config["appId"], a.config["privateKey"], environment == payment.EnvironmentProduction)
 	if err != nil {
 		return nil, fmt.Errorf("alipay init client: %w", err)
 	}
@@ -100,7 +111,8 @@ func (a *Alipay) MerchantIdentityMetadata() map[string]string {
 	if appID == "" {
 		return nil
 	}
-	return map[string]string{"app_id": appID}
+	environment, _ := payment.NormalizeEnvironment(a.config["environment"])
+	return map[string]string{"app_id": appID, "seller_id": strings.TrimSpace(a.config["sellerId"]), "payment_environment": environment}
 }
 
 // CreatePayment creates an Alipay payment using the following routing:
@@ -249,6 +261,9 @@ func (a *Alipay) QueryOrder(ctx context.Context, tradeNo string) (*payment.Query
 		return nil, fmt.Errorf("alipay TradeQuery: %w", err)
 	}
 
+	if result == nil {
+		return nil, fmt.Errorf("alipay query returned empty result")
+	}
 	status := payment.ProviderStatusPending
 	switch result.TradeStatus {
 	case alipay.TradeStatusSuccess, alipay.TradeStatusFinished:
@@ -257,25 +272,27 @@ func (a *Alipay) QueryOrder(ctx context.Context, tradeNo string) (*payment.Query
 		status = payment.ProviderStatusFailed
 	}
 
-	amount, err := strconv.ParseFloat(result.TotalAmount, 64)
-	if err != nil {
-		amount, err = parseAlipayAmount(
-			result.TotalAmount,
-			result.ReceiptAmount,
-			result.BuyerPayAmount,
-			result.InvoiceAmount,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("alipay parse amount: %w", err)
-		}
+	if status != payment.ProviderStatusPaid {
+		return &payment.QueryOrderResponse{TradeNo: result.TradeNo, Status: status}, nil
 	}
+	if result.OutTradeNo != tradeNo || strings.TrimSpace(result.TradeNo) == "" {
+		return nil, fmt.Errorf("alipay query order identity mismatch")
+	}
+	cents, err := payment.AlipayAmountCents(result.TotalAmount)
+	if err != nil {
+		return nil, err
+	}
+	environment, _ := payment.NormalizeEnvironment(a.config["environment"])
+	// 查询响应不包含app_id/seller_id，记录认证上下文，不能伪装成通知返回的商户字段
+	metadata := map[string]string{"confirmation_source": "query", "authenticated_app_id": a.config["appId"],
+		"payment_environment": environment, "out_trade_no": result.OutTradeNo, "total_amount": result.TotalAmount}
 
 	return &payment.QueryOrderResponse{
 		TradeNo:  result.TradeNo,
 		Status:   status,
-		Amount:   amount,
+		Amount:   payment.MinorUnitToAmount(cents, payment.DefaultPaymentCurrency),
 		PaidAt:   result.SendPayDate,
-		Metadata: a.MerchantIdentityMetadata(),
+		Metadata: metadata,
 	}, nil
 }
 
@@ -290,43 +307,41 @@ func (a *Alipay) VerifyNotification(ctx context.Context, rawBody string, _ map[s
 	if err != nil {
 		return nil, fmt.Errorf("alipay parse notification: %w", err)
 	}
+	// 拒绝重复关键参数，验签器与业务读取必须解释同一组事实
+	for _, key := range []string{"app_id", "seller_id", "out_trade_no", "trade_no", "trade_status", "total_amount", "sign", "sign_type"} {
+		if len(values[key]) != 1 || strings.TrimSpace(values.Get(key)) == "" {
+			return nil, fmt.Errorf("alipay notification required field invalid")
+		}
+	}
+	if values.Get("sign_type") != "RSA2" {
+		return nil, fmt.Errorf("alipay notification requires RSA2")
+	}
 
 	notification, err := client.DecodeNotification(ctx, values)
 	if err != nil {
 		return nil, fmt.Errorf("alipay verify notification: %w", err)
 	}
 
-	status := payment.ProviderStatusFailed
-	if notification.TradeStatus == alipay.TradeStatusSuccess || notification.TradeStatus == alipay.TradeStatusFinished {
-		status = payment.ProviderStatusSuccess
+	if notification.AppId != a.config["appId"] || (a.config["sellerId"] != "" && notification.SellerId != a.config["sellerId"]) {
+		return nil, fmt.Errorf("alipay notification merchant mismatch")
 	}
-
-	amount, err := strconv.ParseFloat(notification.TotalAmount, 64)
+	if notification.TradeStatus != alipay.TradeStatusSuccess && notification.TradeStatus != alipay.TradeStatusFinished {
+		return nil, nil
+	}
+	cents, err := payment.AlipayAmountCents(notification.TotalAmount)
 	if err != nil {
-		amount, err = parseAlipayAmount(
-			notification.TotalAmount,
-			notification.ReceiptAmount,
-			notification.BuyerPayAmount,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("alipay parse notification amount: %w", err)
-		}
+		return nil, err
 	}
-
-	metadata := a.MerchantIdentityMetadata()
-	if appID := strings.TrimSpace(notification.AppId); appID != "" {
-		if metadata == nil {
-			metadata = map[string]string{}
-		}
-		metadata["app_id"] = appID
-	}
+	environment, _ := payment.NormalizeEnvironment(a.config["environment"])
+	metadata := map[string]string{"confirmation_source": "notification", "app_id": notification.AppId,
+		"seller_id": notification.SellerId, "payment_environment": environment,
+		"out_trade_no": notification.OutTradeNo, "total_amount": notification.TotalAmount}
 
 	return &payment.PaymentNotification{
 		TradeNo:  notification.TradeNo,
 		OrderID:  notification.OutTradeNo,
-		Amount:   amount,
-		Status:   status,
-		RawData:  rawBody,
+		Amount:   payment.MinorUnitToAmount(cents, payment.DefaultPaymentCurrency),
+		Status:   payment.ProviderStatusSuccess,
 		Metadata: metadata,
 	}, nil
 }

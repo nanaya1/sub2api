@@ -79,10 +79,17 @@ func (s *PaymentService) confirmPayment(ctx context.Context, oid int64, tradeNo 
 	o, err := s.entClient.PaymentOrder.Get(ctx, oid)
 	if err != nil {
 		slog.Error("order not found", "orderID", oid)
-		return nil
+		return err
+	}
+	if err := s.validateOrderEnvironment(o); err != nil {
+		return err
 	}
 	instanceProviderKey := ""
-	if inst, instErr := s.getOrderProviderInstance(ctx, o); instErr == nil && inst != nil {
+	inst, instErr := s.getOrderProviderInstance(ctx, o)
+	if instErr != nil && psHasPinnedProviderInstance(o) {
+		return instErr
+	}
+	if inst != nil {
 		instanceProviderKey = inst.ProviderKey
 	}
 	expectedProviderKey := expectedNotificationProviderKeyForOrder(s.registry, o, instanceProviderKey)
@@ -109,7 +116,19 @@ func (s *PaymentService) confirmPayment(ctx context.Context, oid int64, tradeNo 
 		})
 		return fmt.Errorf("invalid paid amount from provider: %v", paid)
 	}
-	if math.Abs(paid-o.PayAmount) > paymentAmountToleranceForCurrency(PaymentOrderCurrency(o)) {
+	amountMatches := math.Abs(paid-o.PayAmount) <= paymentAmountToleranceForCurrency(PaymentOrderCurrency(o))
+	if expectedProviderKey == payment.TypeAlipay {
+		// 支付宝总额按整数分比较，一分钱差异也拒绝，不能使用优惠后的实收替代总额
+		actualAmount := metadata["total_amount"]
+		if actualAmount == "" {
+			actualAmount = strconv.FormatFloat(paid, 'f', -1, 64)
+		}
+		actual, actualErr := payment.AlipayAmountCents(actualAmount)
+		expected, expectedErr := payment.AlipayAmountCents(strconv.FormatFloat(o.PayAmount, 'f', -1, 64))
+		providerPaid, providerErr := payment.AlipayAmountCents(strconv.FormatFloat(paid, 'f', -1, 64))
+		amountMatches = actualErr == nil && expectedErr == nil && providerErr == nil && actual == expected && providerPaid == actual && strings.TrimSpace(tradeNo) != ""
+	}
+	if !amountMatches {
 		s.writeAuditLog(ctx, o.ID, "PAYMENT_AMOUNT_MISMATCH", pk, map[string]any{"expected": o.PayAmount, "paid": paid, "tradeNo": tradeNo})
 		return fmt.Errorf("amount mismatch: expected %s, got %s", strconv.FormatFloat(o.PayAmount, 'f', -1, 64), strconv.FormatFloat(paid, 'f', -1, 64))
 	}
@@ -129,6 +148,24 @@ func isValidProviderAmount(amount float64) bool {
 }
 
 func validateProviderNotificationMetadata(order *dbent.PaymentOrder, providerKey string, metadata map[string]string) error {
+	// 交易事实只在支付确认时强制校验，退款的渠道身份核验不伪造付款事实
+	snapshot := psOrderProviderSnapshot(order)
+	if order != nil && snapshot != nil {
+		if providerKey == payment.TypeAlipay && snapshot.SchemaVersion >= 3 {
+			if metadata["payment_environment"] != PaymentOrderEnvironment(order) || metadata["out_trade_no"] != order.OutTradeNo {
+				return fmt.Errorf("alipay order environment or identity mismatch")
+			}
+			if metadata["confirmation_source"] != "query" && metadata["confirmation_source"] != "notification" {
+				return fmt.Errorf("alipay confirmation source missing")
+			}
+			if _, err := payment.AlipayAmountCents(metadata["total_amount"]); err != nil {
+				return err
+			}
+		} else if len(metadata) == 0 {
+			return nil
+		}
+
+	}
 	return validateProviderSnapshotMetadata(order, providerKey, metadata)
 }
 
@@ -189,7 +226,7 @@ func (s *PaymentService) toPaid(ctx context.Context, o *dbent.PaymentOrder, trad
 func (s *PaymentService) alreadyProcessed(ctx context.Context, o *dbent.PaymentOrder) error {
 	cur, err := s.entClient.PaymentOrder.Get(ctx, o.ID)
 	if err != nil {
-		return nil
+		return err
 	}
 	switch cur.Status {
 	case OrderStatusCompleted, OrderStatusRefunded:
@@ -207,7 +244,7 @@ func (s *PaymentService) alreadyProcessed(ctx context.Context, o *dbent.PaymentO
 			"updatedAt": cur.UpdatedAt,
 			"reason":    "payment arrived after expiry grace period",
 		})
-		return nil
+		return fmt.Errorf("paid order beyond automatic recovery window")
 	default:
 		return nil
 	}

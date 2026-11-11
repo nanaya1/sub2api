@@ -107,6 +107,7 @@ type Config struct {
 	Plugins                 PluginConfig                  `mapstructure:"plugins"`
 	Provisioning            ProvisioningConfig            `mapstructure:"provisioning"`
 	CoworkPortal            CoworkPortalConfig            `mapstructure:"cowork_portal"`
+	Payment                 PaymentConfig                 `mapstructure:"payment"`
 }
 
 // PluginConfig 控制管理员手动上传的本地进程插件。
@@ -2711,12 +2712,18 @@ func setEnvReachableDefaults() {
 
 	// 主服务 Provisioning 接口默认关闭；API Key 仅允许通过配置文件或 PROVISIONING_API_KEY 注入。
 	viper.SetDefault("cowork_portal.enabled", false)
+	viper.SetDefault("payment.environment", PaymentEnvironmentProduction)
 	viper.SetDefault("cowork_portal.api_key", "")
 	viper.SetDefault("provisioning.enabled", false)
 	viper.SetDefault("provisioning.api_key", "")
 }
 
 func (c *Config) Validate() error {
+	var paymentErr error
+	c.Payment.Environment, paymentErr = NormalizePaymentEnvironment(c.Payment.Environment)
+	if paymentErr != nil {
+		return paymentErr
+	}
 	forwardedClientIPHeaders, err := NormalizeForwardedClientIPHeaders(c.Security.ForwardedClientIPHeaders)
 	if err != nil {
 		return fmt.Errorf("security.forwarded_client_ip_headers: %w", err)

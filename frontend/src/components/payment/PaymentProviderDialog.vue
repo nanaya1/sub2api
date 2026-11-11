@@ -153,6 +153,9 @@
           {{ paymentGuide.summary }}
         </p>
         <div class="space-y-3">
+          <p v-if="form.provider_key === 'alipay'" class="text-sm text-amber-600">
+            支付环境必须与服务端部署一致。沙箱仅使用测试商家、测试资金和独立数据；一期请选网页跳转支付。
+          </p>
           <div v-for="field in resolvedFields" :key="field.key">
             <label class="input-label">
               {{ field.label }}
@@ -655,6 +658,11 @@ function serializeLimits(): string {
 }
 
 function handleSave() {
+  // 沙箱商家必须显式配置，不能把正式商家信息当作默认值
+  if (form.provider_key === 'alipay' && config.environment === 'sandbox' && !config.sellerId?.trim()) {
+    emitValidationError('支付宝沙箱必须填写测试商家的sellerId')
+    return
+  }
   // Validate required fields
   if (!form.name.trim()) {
     emitValidationError(t('admin.settings.payment.validationNameRequired'))

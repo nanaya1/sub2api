@@ -27,6 +27,8 @@ services:
       - AUTO_SETUP=true
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=8080
+      # 沙箱只允许官方支付宝，须配独立数据与测试商家
+      - PAYMENT_ENVIRONMENT=${PAYMENT_ENVIRONMENT:-production}
       - SERVER_MODE=debug
       - ENABLE_SERVER_TIMING=${ENABLE_SERVER_TIMING:-false}
       - RUN_MODE=${RUN_MODE:-standard}

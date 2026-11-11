@@ -121,13 +121,14 @@ type UpdatePaymentConfigRequest struct {
 
 // MethodLimits holds per-payment-type limits.
 type MethodLimits struct {
-	PaymentType string  `json:"payment_type"`
-	DisplayName string  `json:"display_name,omitempty"`
-	Currency    string  `json:"currency"`
-	FeeRate     float64 `json:"fee_rate"`
-	DailyLimit  float64 `json:"daily_limit"`
-	SingleMin   float64 `json:"single_min"`
-	SingleMax   float64 `json:"single_max"`
+	PaymentEnvironment string  `json:"payment_environment"`
+	PaymentType        string  `json:"payment_type"`
+	DisplayName        string  `json:"display_name,omitempty"`
+	Currency           string  `json:"currency"`
+	FeeRate            float64 `json:"fee_rate"`
+	DailyLimit         float64 `json:"daily_limit"`
+	SingleMin          float64 `json:"single_min"`
+	SingleMax          float64 `json:"single_max"`
 }
 
 // MethodLimitsResponse is the full response for the user-facing /limits API.
@@ -195,14 +196,19 @@ type UpdatePlanRequest struct {
 // PaymentConfigService manages payment configuration and CRUD for
 // provider instances, channels, and subscription plans.
 type PaymentConfigService struct {
+	environment   string
 	entClient     *dbent.Client
 	settingRepo   SettingRepository
 	encryptionKey []byte
 }
 
 // NewPaymentConfigService creates a new PaymentConfigService.
-func NewPaymentConfigService(entClient *dbent.Client, settingRepo SettingRepository, encryptionKey []byte) *PaymentConfigService {
-	return &PaymentConfigService{entClient: entClient, settingRepo: settingRepo, encryptionKey: encryptionKey}
+func NewPaymentConfigService(entClient *dbent.Client, settingRepo SettingRepository, encryptionKey []byte, environment ...string) *PaymentConfigService {
+	env := payment.EnvironmentProduction
+	if len(environment) > 0 {
+		env = environment[0]
+	}
+	return &PaymentConfigService{entClient: entClient, settingRepo: settingRepo, encryptionKey: encryptionKey, environment: env}
 }
 
 // IsPaymentEnabled returns whether the payment system is enabled.

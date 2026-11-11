@@ -1282,3 +1282,8 @@ cowork_portal:
   # 使用 openssl rand -hex 32 独立生成，建议通过 COWORK_PORTAL_API_KEY 环境变量注入
   # 至少32字符；主系统配置相同密钥，不复用 PROVISIONING_API_KEY、管理员 Key 或 OAuth 密钥
   api_key: ""
+
+# 支付部署环境(production-正式资金,sandbox-支付宝沙箱测试资金)，空值兼容production
+# 沙箱必须使用独立数据库、Redis、商家和回调入口，不将测试余额迁入正式环境
+payment:
+  environment: "production"

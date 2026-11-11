@@ -71,6 +71,8 @@ func generateRandomString(n int) string {
 }
 
 type CreateOrderRequest struct {
+	// PortalOperation 仅由可信Portal入口绑定，和订单在同一数据库事务内记录恢复引用
+	PortalOperation *PaymentPortalOperation
 	UserID          int64
 	Amount          float64
 	PaymentType     string
@@ -88,6 +90,7 @@ type CreateOrderRequest struct {
 }
 
 type CreateOrderResponse struct {
+	PaymentEnvironment            string                          `json:"payment_environment"`
 	OrderID                       int64                           `json:"order_id"`
 	Amount                        float64                         `json:"amount"`
 	PayAmount                     float64                         `json:"pay_amount"`
@@ -247,6 +250,9 @@ func (s *PaymentService) loadProviders(ctx context.Context) {
 		}
 		if inst.PaymentMode != "" {
 			cfg["paymentMode"] = inst.PaymentMode
+		}
+		if err := s.configService.validateProviderEnvironment(inst.ProviderKey, cfg); err != nil {
+			continue
 		}
 		instID := fmt.Sprintf("%d", inst.ID)
 		p, err := provider.CreateProvider(inst.ProviderKey, instID, cfg)

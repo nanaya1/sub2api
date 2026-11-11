@@ -130,7 +130,7 @@ func (h *CoworkPortalHandler) dispatch(ctx context.Context, r *coworkPortalReque
 		return h.handlers.Provisioning.service.PortalUsage(ctx, r.CoworkPortalIdentity, service.CoworkPortalUsageFilter{Start: start, End: end.AddDate(0, 0, 1), Model: p.Model, APIKeyID: p.APIKeyID, Page: p.Page, PageSize: p.PageSize}, r.Operation)
 	case "key.page", "key.detail", "key.add", "key.edit", "key.editStatus", "key.remove", "key.reveal":
 		return h.keys(ctx, r)
-	case "wallet.detail", "recharge.options", "recharge.add", "recharge.redeem", "recharge.history", "order.page", "order.detail", "order.cancel":
+	case "wallet.detail", "recharge.options", "recharge.add", "recharge.redeem", "recharge.history", "order.page", "order.detail", "order.cancel", "order.check":
 		return h.payment(ctx, r, c)
 	case "operation.detail":
 		if p.Operation != "key.add" && p.Operation != "recharge.add" && p.Operation != "recharge.redeem" {

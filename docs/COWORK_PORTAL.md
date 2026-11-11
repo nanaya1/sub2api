@@ -38,3 +38,13 @@ operation.detail只能读取本人记录，不执行原操作。没有跨业务�
 ## 验证
 
 在backend运行go test -tags unit ./internal/service -run 'TestCoworkPortal|TestProvisioning|TestPublicRedeem' -count=1；运行go test ./internal/handler ./internal/server/routes ./cmd/server ./migrations。TestCoworkPortalDatabase默认跳过，显式COWORK_PORTAL_TEST_DSN仅允许127.0.0.1可丢弃空PG，会创建测试表，禁止指向业务数据库
+
+## 支付环境与主动核查
+
+通用字段paymentEnvironment(production-正式资金,sandbox-支付宝测试资金)覆盖recharge.options的方法、recharge.add、order.page/detail/check及已保存支付结果，历史缺省production，不能复用Airwallex paymentEnv。客户端不能传入环境，部署PAYMENT_ENVIRONMENT与实例environment须匹配，sandbox只允许官方Alipay
+
+新增内部操作`order.check`，parameters仅含id。它先校验本人全局余额订单及环境，再以用户行锁和支付审计跨副本限频10秒，提交后才查原渠道，调用共用支付确认与履约。COMPLETED等状态仅返回事实，GET order.detail和operation.detail保持只读。通知RSA2、商家、订单、金额整数分必须一致；查询用authenticated_app_id表达原渠道的认证上下文，不能把它伪装成接口返回的app_id/seller_id
+
+recharge.add在订单事务内写操作resource_id，提交后才调用渠道。网络异常不将订单改FAILED，操作可为PENDING/UNCONFIRMED并保留resourceId，主系统可按原ID查询或核查。该ID表示已持久化订单，不表示下单支付参数已完整或资金已到账。操作COMPLETED表示下单动作完成，只有订单COMPLETED表示到账
+
+沿用现有结构与此前243迁移，本次无新增SQL；核查事件action为PORTAL_ORDER_CHECK:时间纳秒以兼容(order_id,action)唯一索引。测试只能使用临时库与受控支付，真实沙箱付款仍需独立应用、买家和可达HTTPS回调

@@ -106,9 +106,10 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 	}
 	resp, err := s.invokeProvider(ctx, order, req, cfg, limitAmount, payAmountStr, payAmount, plan, sel)
 	if err != nil {
-		_, _ = s.entClient.PaymentOrder.UpdateOneID(order.ID).
-			SetStatus(OrderStatusFailed).
-			Save(ctx)
+		// 网络异常不能证明支付未创建，保留原订单供通知或主动查单恢复
+		auditCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		s.writeAuditLog(auditCtx, order.ID, "PAYMENT_INIT_UNCONFIRMED", "system", map[string]any{"result": "UNCONFIRMED"})
 		return nil, err
 	}
 	return resp, nil
@@ -218,6 +219,9 @@ func (s *PaymentService) createOrderInTx(ctx context.Context, req CreateOrderReq
 	if err != nil {
 		return nil, fmt.Errorf("set recharge code: %w", err)
 	}
+	if err := bindPortalPaymentOrder(ctx, tx, req.PortalOperation, order.ID); err != nil {
+		return nil, err
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("commit order transaction: %w", err)
 	}
@@ -287,6 +291,11 @@ func buildPaymentOrderProviderSnapshot(sel *payment.InstanceSelection, req Creat
 		snapshot["currency"] = payment.DefaultPaymentCurrency
 	}
 	if providerKey == payment.TypeAlipay {
+		snapshot["schema_version"] = 3
+		env, _ := payment.NormalizeEnvironment(sel.Config["environment"])
+		snapshot["payment_environment"] = env
+		snapshot["merchant_id"] = strings.TrimSpace(sel.Config["sellerId"])
+		snapshot["currency"] = payment.DefaultPaymentCurrency
 		if merchantAppID := strings.TrimSpace(sel.Config["appId"]); merchantAppID != "" {
 			snapshot["merchant_app_id"] = merchantAppID
 		}
@@ -612,6 +621,12 @@ func (s *PaymentService) buildWeChatOAuthRequiredResponse(ctx context.Context, r
 }
 
 func (s *PaymentService) validateSelectedCreateOrderInstance(ctx context.Context, req CreateOrderRequest, sel *payment.InstanceSelection) error {
+	if sel == nil {
+		return infraerrors.ServiceUnavailable("PAYMENT_UNAVAILABLE", "payment instance is unavailable")
+	}
+	if err := s.configService.validateProviderEnvironment(sel.ProviderKey, sel.Config); err != nil {
+		return err
+	}
 	if !requiresWeChatJSAPICompatibleSelection(req, sel) {
 		return nil
 	}
@@ -731,26 +746,27 @@ func classifyCreatePaymentError(req CreateOrderRequest, providerKey string, err 
 
 func buildCreateOrderResponse(order *dbent.PaymentOrder, req CreateOrderRequest, payAmount float64, sel *payment.InstanceSelection, pr *payment.CreatePaymentResponse, resultType payment.CreatePaymentResultType) *CreateOrderResponse {
 	return &CreateOrderResponse{
-		OrderID:      order.ID,
-		Amount:       order.Amount,
-		PayAmount:    payAmount,
-		FeeRate:      order.FeeRate,
-		Status:       OrderStatusPending,
-		ResultType:   resultType,
-		PaymentType:  req.PaymentType,
-		OutTradeNo:   order.OutTradeNo,
-		PayURL:       pr.PayURL,
-		QRCode:       pr.QRCode,
-		ClientSecret: pr.ClientSecret,
-		IntentID:     pr.IntentID,
-		Currency:     pr.Currency,
-		CountryCode:  pr.CountryCode,
-		PaymentEnv:   pr.PaymentEnv,
-		OAuth:        pr.OAuth,
-		JSAPI:        pr.JSAPI,
-		JSAPIPayload: pr.JSAPI,
-		ExpiresAt:    order.ExpiresAt,
-		PaymentMode:  sel.PaymentMode,
+		PaymentEnvironment: PaymentOrderEnvironment(order),
+		OrderID:            order.ID,
+		Amount:             order.Amount,
+		PayAmount:          payAmount,
+		FeeRate:            order.FeeRate,
+		Status:             OrderStatusPending,
+		ResultType:         resultType,
+		PaymentType:        req.PaymentType,
+		OutTradeNo:         order.OutTradeNo,
+		PayURL:             pr.PayURL,
+		QRCode:             pr.QRCode,
+		ClientSecret:       pr.ClientSecret,
+		IntentID:           pr.IntentID,
+		Currency:           pr.Currency,
+		CountryCode:        pr.CountryCode,
+		PaymentEnv:         pr.PaymentEnv,
+		OAuth:              pr.OAuth,
+		JSAPI:              pr.JSAPI,
+		JSAPIPayload:       pr.JSAPI,
+		ExpiresAt:          order.ExpiresAt,
+		PaymentMode:        sel.PaymentMode,
 	}
 }
 

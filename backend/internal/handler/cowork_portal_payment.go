@@ -39,7 +39,7 @@ func (h *CoworkPortalHandler) payment(ctx context.Context, r *coworkPortalReques
 				if !slices.Contains(cfg.EnabledTypes, m.PaymentType) {
 					continue
 				}
-				methods = append(methods, map[string]any{"paymentType": m.PaymentType, "displayName": m.DisplayName, "currency": m.Currency, "feeRate": m.FeeRate, "singleMin": m.SingleMin, "singleMax": m.SingleMax})
+				methods = append(methods, map[string]any{"paymentType": m.PaymentType, "displayName": m.DisplayName, "currency": m.Currency, "feeRate": m.FeeRate, "singleMin": m.SingleMin, "singleMax": m.SingleMax, "paymentEnvironment": m.PaymentEnvironment})
 			}
 		}
 		return map[string]any{"enabled": cfg.Enabled && !cfg.BalanceDisabled && len(methods) > 0, "methods": methods, "minAmount": cfg.MinAmount, "maxAmount": cfg.MaxAmount, "balanceRechargeMultiplier": cfg.BalanceRechargeMultiplier, "feeRate": cfg.RechargeFeeRate, "stripePublishableKey": cfg.StripePublishableKey}, nil
@@ -66,7 +66,8 @@ func (h *CoworkPortalHandler) payment(ctx context.Context, r *coworkPortalReques
 		}
 		return h.once(ctx, r, func() (int64, any, error) {
 			// 仅创建个人余额订单，不允许借助套餐购买改变主系统同步授权
-			result, err := payments.CreateOrder(ctx, service.CreateOrderRequest{UserID: r.UserID, Amount: p.Amount, PaymentType: p.PaymentType, ReturnURL: r.ReturnURL, OrderType: "balance", ClientIP: c.ClientIP(), SrcHost: c.Request.Host, PaymentSource: "cowork", Locale: "zh"})
+			result, err := payments.CreateOrder(ctx, service.CreateOrderRequest{UserID: r.UserID, Amount: p.Amount, PaymentType: p.PaymentType, ReturnURL: r.ReturnURL, OrderType: "balance", ClientIP: c.ClientIP(), SrcHost: c.Request.Host, PaymentSource: "cowork", Locale: "zh",
+				PortalOperation: &service.PaymentPortalOperation{Source: r.Source, ExternalUserID: r.ExternalUserID, RequestID: p.RequestID}})
 			if err != nil {
 				return 0, nil, err
 			}
@@ -83,6 +84,7 @@ func (h *CoworkPortalHandler) payment(ctx context.Context, r *coworkPortalReques
 			}
 			// 持久化仅经过白名单的支付发起结果，避免保存完整订单或商户配置
 			data := map[string]any{"orderId": result.OrderID, "outTradeNo": result.OutTradeNo, "status": result.Status, "resultType": result.ResultType, "payUrl": result.PayURL, "qrCode": result.QRCode, "clientSecret": result.ClientSecret, "intentId": result.IntentID, "currency": result.Currency, "paymentType": result.PaymentType, "countryCode": result.CountryCode, "paymentEnv": result.PaymentEnv, "paymentMode": result.PaymentMode, "alipayMobilePrecreateDeepLink": result.AlipayMobilePrecreateDeepLink, "amount": result.Amount, "payAmount": result.PayAmount, "feeRate": result.FeeRate, "expiresAt": result.ExpiresAt}
+			data["paymentEnvironment"] = result.PaymentEnvironment
 			return result.OrderID, data, nil
 		})
 	case "recharge.redeem":
@@ -121,7 +123,7 @@ func (h *CoworkPortalHandler) payment(ctx context.Context, r *coworkPortalReques
 			result = append(result, coworkPortalOrder(order))
 		}
 		return service.CoworkPortalPage(result, int64(total), p.Page, p.PageSize), nil
-	case "order.detail", "order.cancel":
+	case "order.detail", "order.cancel", "order.check":
 		if p.ID <= 0 {
 			return nil, service.ErrPortalInvalid
 		}
@@ -130,10 +132,20 @@ func (h *CoworkPortalHandler) payment(ctx context.Context, r *coworkPortalReques
 			return nil, service.ErrPortalNotFound
 		}
 		if r.Operation == "order.cancel" {
-			if _, err = payments.CancelOrder(ctx, p.ID, r.UserID); err != nil {
+			var result string
+			if result, err = payments.CancelOrder(ctx, p.ID, r.UserID); err != nil {
 				return nil, portalMutationError(err)
 			}
+			if result != "cancelled" {
+				return nil, service.ErrPortalUnconfirmed
+			}
 			return map[string]any{}, nil
+		}
+		if r.Operation == "order.check" {
+			order, err = payments.CheckPortalPaymentOrder(ctx, p.ID, r.UserID)
+			if err != nil {
+				return nil, err
+			}
 		}
 		return coworkPortalOrder(order), nil
 	}
@@ -141,7 +153,7 @@ func (h *CoworkPortalHandler) payment(ctx context.Context, r *coworkPortalReques
 }
 
 func coworkPortalOrder(o *dbent.PaymentOrder) map[string]any {
-	return map[string]any{"id": o.ID, "outTradeNo": o.OutTradeNo, "status": o.Status, "amount": o.Amount, "payAmount": o.PayAmount, "feeRate": o.FeeRate, "currency": service.PaymentOrderCurrency(o), "paymentType": o.PaymentType, "refundAmount": o.RefundAmount, "createTime": o.CreatedAt, "paidAt": o.PaidAt, "completedAt": o.CompletedAt, "expiresAt": o.ExpiresAt}
+	return map[string]any{"id": o.ID, "outTradeNo": o.OutTradeNo, "status": o.Status, "amount": o.Amount, "payAmount": o.PayAmount, "feeRate": o.FeeRate, "currency": service.PaymentOrderCurrency(o), "paymentType": o.PaymentType, "paymentEnvironment": service.PaymentOrderEnvironment(o), "refundAmount": o.RefundAmount, "createTime": o.CreatedAt, "paidAt": o.PaidAt, "completedAt": o.CompletedAt, "expiresAt": o.ExpiresAt}
 }
 
 func validPortalOrderStatus(status string) bool {

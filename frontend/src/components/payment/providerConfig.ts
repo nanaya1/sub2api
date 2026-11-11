@@ -133,6 +133,12 @@ export const PROVIDER_CONFIG_FIELDS: Record<string, ConfigFieldDef[]> = {
     { key: 'cidWxpay', label: '', sensitive: false, optional: true },
   ],
   alipay: [
+    // 环境由部署同时约束，不能通过表单把沙箱实例改成真实收款渠道
+    { key: 'environment', label: '支付环境', sensitive: false, defaultValue: 'production', options: [
+      { value: 'production', label: '正式环境 · 真实资金' },
+      { value: 'sandbox', label: '支付宝沙箱 · 测试资金' },
+    ] },
+    { key: 'sellerId', label: '商家sellerId(沙箱必填)', sensitive: false, optional: true },
     { key: 'appId', label: 'App ID', sensitive: false },
     { key: 'privateKey', label: '', sensitive: true },
     { key: 'publicKey', label: '', sensitive: true },
