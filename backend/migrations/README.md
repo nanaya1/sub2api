@@ -162,6 +162,14 @@ WHERE platform = 'gemini'
 ### Checksum Mismatch
 See "If You Accidentally Modified an Applied Migration" above.
 
+#### 243 迁移的历史换行兼容
+
+`243_cowork_portal_operations.sql` 曾因构建目录使用不同换行符产生两个摘要：LF 为 `94b311209d3afcdf6d20f69f63d47bcb47bc67332893483cfde973f3034603bf`，CRLF 为 `6937c1b81c2f5ae04ffd0ff5b1678da244d3859a47049208675b62572ddb0073`。这两个版本的 SQL 内容相同。
+
+迁移执行器只对该文件的这两个完整摘要做双向兼容，已执行的迁移直接跳过，不重跑建表或修改历史记录；其他未知摘要仍然报错。遇到这一组合时，重新构建并部署包含兼容修复的二进制或镜像即可，无需修改数据库校验和或删除迁移记录。构建目录的 SQL 应遵循 `.gitattributes` 使用 LF。
+
+回归验证（在 `backend` 目录执行）：`go test ./internal/repository -run 'TestApplyMigrationsFS_PortalLineEndingCompatibility|TestIsMigrationChecksumCompatible' -count=1`，以及 `go test ./migrations`。
+
 ### Migration Failed
 ```bash
 # Check migration status
