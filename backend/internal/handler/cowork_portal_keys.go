@@ -53,6 +53,8 @@ func (h *CoworkPortalHandler) keys(ctx context.Context, r *coworkPortalRequest) 
 		}
 	}
 	if r.Operation == "key.add" {
+		identity.TargetGroupID = p.GroupID
+		r.CoworkPortalIdentity.TargetGroupID = p.GroupID
 		group, err := store.PortalCurrentGroup(ctx, identity)
 		if err != nil {
 			return nil, err
@@ -74,7 +76,11 @@ func (h *CoworkPortalHandler) keys(ctx context.Context, r *coworkPortalRequest) 
 			if p.RateLimit7d != nil {
 				request.RateLimit7d = *p.RateLimit7d
 			}
-			key, err := keys.Create(ctx, identity.UserID, request)
+			key, err := keys.Create(service.WithCoworkKeyOperation(ctx, service.CoworkKeyOperation{Source: identity.Source, ExternalUserID: identity.ExternalUserID, RequestID: p.RequestID}), identity.UserID, request)
+			if err != nil {
+				return 0, nil, err
+			}
+			key, err = keys.GetByID(ctx, key.ID)
 			if err != nil {
 				return 0, nil, err
 			}
@@ -135,5 +141,10 @@ func coworkPortalKey(key *service.APIKey, reveal bool) map[string]any {
 	if deny == nil {
 		deny = []string{}
 	}
-	return map[string]any{"id": key.ID, "name": html.UnescapeString(key.Name), "maskedKey": masked, "key": secret, "status": key.Status, "quota": key.Quota, "quotaUsed": key.QuotaUsed, "rateLimit5h": key.RateLimit5h, "rateLimit1d": key.RateLimit1d, "rateLimit7d": key.RateLimit7d, "ipWhitelist": allow, "ipBlacklist": deny, "expiresAt": key.ExpiresAt, "createTime": key.CreatedAt}
+	var groupName, platform string
+	if key.Group != nil {
+		groupName = key.Group.Name
+		platform = key.Group.Platform
+	}
+	return map[string]any{"groupId": key.GroupID, "groupName": groupName, "platform": platform, "id": key.ID, "name": html.UnescapeString(key.Name), "maskedKey": masked, "key": secret, "status": key.Status, "quota": key.Quota, "quotaUsed": key.QuotaUsed, "rateLimit5h": key.RateLimit5h, "rateLimit1d": key.RateLimit1d, "rateLimit7d": key.RateLimit7d, "ipWhitelist": allow, "ipBlacklist": deny, "expiresAt": key.ExpiresAt, "createTime": key.CreatedAt}
 }

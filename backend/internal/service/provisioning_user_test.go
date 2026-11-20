@@ -37,19 +37,17 @@ func expectGlobalUser(mock sqlmock.Sqlmock, id, version, groupsVersion int64, st
 
 // TestProvisioningUserGroups 验证跨企业授权原子替换、空集合、缺失依赖及乱序重放
 func TestProvisioningUserGroups(t *testing.T) {
-	for _, scenario := range []string{"two_tenants", "empty", "missing_group", "deleted_group", "stale", "duplicate", "deleted_user"} {
+	for _, scenario := range []string{"replace", "empty", "missing", "stale", "duplicate", "deleted_user"} {
 		t.Run(scenario, func(t *testing.T) {
 			db, mock, err := sqlmock.New()
 			require.NoError(t, err)
 			defer db.Close()
-			svc := NewProvisioningService(db, nil, nil)
-			version := int64(200)
-			status := "disabled" // 全局禁用账号仍保存分组归属
+			status := "disabled"
 			if scenario == "deleted_user" {
 				status = "deleted"
 			}
 			expectGlobalUser(mock, 10, 100, 150, status)
-			input := ProvisioningUserGroupsInput{Source: "cowork", ExternalUserID: "7", Version: version, Groups: []ProvisioningGroupReference{}}
+			input := ProvisioningUserGroupsInput{Source: "cowork", ExternalUserID: "7", Version: 200, ModelGroupIDs: []int64{}}
 			if scenario == "stale" {
 				input.Version = 149
 			}
@@ -57,47 +55,36 @@ func TestProvisioningUserGroups(t *testing.T) {
 				input.Version = 150
 			}
 			skip := scenario == "stale" || scenario == "duplicate" || scenario == "deleted_user"
-			if !skip && scenario != "empty" {
-				input.Groups = []ProvisioningGroupReference{{TenantKey: "2", ExternalGroupID: "4"}, {TenantKey: "1", ExternalGroupID: "3"}}
-				query := mock.ExpectQuery("FROM provisioning_group_bindings").WithArgs("cowork", "1", "3")
-				if scenario == "missing_group" {
-					query.WillReturnError(sql.ErrNoRows)
-				} else {
-					groupStatus := "active"
-					if scenario == "deleted_group" {
-						groupStatus = "deleted"
-					}
-					query.WillReturnRows(sqlmock.NewRows([]string{"local_group_id", "status"}).AddRow(20, groupStatus))
-					mock.ExpectQuery("FROM provisioning_group_bindings").WithArgs("cowork", "2", "4").WillReturnRows(
-						sqlmock.NewRows([]string{"local_group_id", "status"}).AddRow(30, "active"))
-				}
-			}
-			if !skip && scenario != "missing_group" {
+			if !skip {
 				mock.ExpectExec("UPDATE users SET restrict_public_groups").WithArgs(int64(10)).WillReturnResult(sqlmock.NewResult(0, 1))
-				mock.ExpectExec("DELETE FROM user_allowed_groups WHERE user_id").WithArgs(int64(10)).WillReturnResult(sqlmock.NewResult(0, 3))
+				mock.ExpectExec("DELETE FROM user_allowed_groups").WithArgs(int64(10)).WillReturnResult(sqlmock.NewResult(0, 2))
 				if scenario != "empty" {
-					if scenario != "deleted_group" {
-						mock.ExpectExec("INSERT INTO user_allowed_groups").WithArgs(int64(10), int64(20)).WillReturnResult(sqlmock.NewResult(0, 1))
+					input.ModelGroupIDs = []int64{4, 3}
+					mock.ExpectQuery("SELECT EXISTS.*FROM groups").WithArgs(int64(3)).WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(scenario != "missing"))
+					if scenario != "missing" {
+						mock.ExpectQuery("SELECT EXISTS.*FROM groups").WithArgs(int64(4)).WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+						mock.ExpectExec("INSERT INTO user_allowed_groups").WithArgs(int64(10), "{3,4}").WillReturnResult(sqlmock.NewResult(0, 2))
 					}
-					mock.ExpectExec("INSERT INTO user_allowed_groups").WithArgs(int64(10), int64(30)).WillReturnResult(sqlmock.NewResult(0, 1))
 				}
-				mock.ExpectExec("UPDATE provisioning_user_bindings SET groups_version").WithArgs("cowork", "7", version).WillReturnResult(sqlmock.NewResult(0, 1))
+				if scenario != "missing" {
+					mock.ExpectExec("UPDATE provisioning_user_bindings SET groups_version").WithArgs("cowork", "7", int64(200)).WillReturnResult(sqlmock.NewResult(0, 1))
+				}
 			}
-			if scenario == "missing_group" {
+			if scenario == "missing" {
 				mock.ExpectRollback()
 			} else {
 				mock.ExpectCommit()
 			}
-			result, err := svc.ReplaceUserGroups(context.Background(), input)
-			if scenario == "missing_group" {
+			result, err := NewProvisioningService(db, nil, nil).ReplaceUserGroups(context.Background(), input)
+			if scenario == "missing" {
 				require.ErrorIs(t, err, ErrProvisioningBindingNotFound)
 			} else {
 				require.NoError(t, err)
+				want := int64(200)
 				if skip {
-					require.Equal(t, int64(150), result.GroupsVersion)
-				} else {
-					require.Equal(t, version, result.GroupsVersion)
+					want = 150
 				}
+				require.Equal(t, want, result.GroupsVersion)
 			}
 			require.NoError(t, mock.ExpectationsWereMet())
 		})

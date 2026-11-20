@@ -43,6 +43,29 @@ func (r *apiKeyRepository) activeQuery() *dbent.APIKeyQuery {
 }
 
 func (r *apiKeyRepository) Create(ctx context.Context, key *service.APIKey) error {
+	if op, ok := service.CoworkKeyOperationFromContext(ctx); ok {
+		tx, err := r.client.Tx(ctx)
+		if err != nil {
+			return err
+		}
+		defer tx.Rollback()
+		if err = r.CreateInTx(ctx, tx, key); err != nil {
+			return err
+		}
+		// Key 与已有操作的资源ID同事务提交；崩溃后只读确认，不重放创建。
+		res, err := tx.Client().ExecContext(ctx, `UPDATE cowork_portal_operations SET resource_id=$4,updated_at=NOW() WHERE source=$1 AND external_user_id=$2 AND request_id=$3 AND operation='key.add' AND status IN ('PENDING','UNCONFIRMED') AND resource_id IS NULL`, op.Source, op.ExternalUserID, op.RequestID, key.ID)
+		if err != nil {
+			return err
+		}
+		n, err := res.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if n != 1 {
+			return service.ErrPortalUnconfirmed
+		}
+		return tx.Commit()
+	}
 	builder := r.client.APIKey.Create().
 		SetUserID(key.UserID).
 		SetKey(key.Key).

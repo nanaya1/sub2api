@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"github.com/lib/pq"
 	"time"
 )
 
@@ -18,12 +19,12 @@ type CoworkPortalUsageFilter struct {
 
 // PortalUsage 查询只读企业投影，所有身份条件在分页和聚合前进入SQL。
 func (s *ProvisioningService) PortalUsage(ctx context.Context, identity CoworkPortalIdentity, filter CoworkPortalUsageFilter, operation string) (any, error) {
-	if identity.TenantKey == "" || filter.Page < 1 || filter.PageSize < 1 || filter.PageSize > 100 || !filter.Start.Before(filter.End) || filter.End.Sub(filter.Start) > 367*24*time.Hour {
+	if identity.TenantKey == "" || validateCoworkIDs(identity.APIKeyIDs, 4000) != nil || filter.Page < 1 || filter.PageSize < 1 || filter.PageSize > 100 || !filter.Start.Before(filter.End) || filter.End.Sub(filter.Start) > 367*24*time.Hour {
 		return nil, ErrPortalInvalid
 	}
 	where := ` FROM usage_logs l WHERE l.user_id = $1 AND l.created_at >= $2 AND l.created_at < $3
-        AND EXISTS (SELECT 1 FROM provisioning_group_bindings b WHERE b.local_group_id = l.group_id AND b.source = $4 AND b.tenant_key = $5)`
-	args := []any{identity.UserID, filter.Start, filter.End, identity.Source, identity.TenantKey}
+        AND l.api_key_id=ANY($4::bigint[])`
+	args := []any{identity.UserID, filter.Start, filter.End, pq.Array(identity.APIKeyIDs)}
 	if filter.Model != "" {
 		args = append(args, filter.Model)
 		where += fmt.Sprintf(" AND COALESCE(NULLIF(l.requested_model, ''), l.model) = $%d", len(args))
@@ -93,12 +94,12 @@ func (s *ProvisioningService) PortalUsage(ctx context.Context, identity CoworkPo
 
 // PortalKeyIDs 先在数据库限定本人和企业后分页，绝不分页后过滤。
 func (s *ProvisioningService) PortalKeyIDs(ctx context.Context, identity CoworkPortalIdentity, page, size int, keyword, status string) ([]int64, int64, error) {
-	if identity.TenantKey == "" || page < 1 || size < 1 || size > 100 {
+	if identity.TenantKey == "" || validateCoworkIDs(identity.APIKeyIDs, 4000) != nil || page < 1 || size < 1 || size > 100 {
 		return nil, 0, ErrPortalInvalid
 	}
 	where := ` FROM api_keys k WHERE k.user_id=$1 AND k.deleted_at IS NULL
-        AND EXISTS(SELECT 1 FROM provisioning_group_bindings b WHERE b.local_group_id=k.group_id AND b.source=$2 AND b.tenant_key=$3)`
-	args := []any{identity.UserID, identity.Source, identity.TenantKey}
+        AND k.id=ANY($2::bigint[])`
+	args := []any{identity.UserID, pq.Array(identity.APIKeyIDs)}
 	if keyword != "" {
 		args = append(args, keyword)
 		where += fmt.Sprintf(" AND strpos(lower(k.name),lower($%d))>0", len(args))

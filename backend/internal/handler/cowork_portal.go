@@ -31,6 +31,9 @@ type coworkPortalRequest struct {
 }
 
 type coworkPortalParameters struct {
+	APIKeyIDs       []int64    `json:"keyIds,omitempty"`
+	ModelGroupIDs   []int64    `json:"modelGroupIds,omitempty"`
+	GroupID         int64      `json:"groupId"`
 	RequestID       string     `json:"requestId"`
 	Operation       string     `json:"operation"`
 	ID              int64      `json:"id"`
@@ -66,14 +69,20 @@ func (h *CoworkPortalHandler) Authenticate(c *gin.Context) {
 	c.Request = c.Request.WithContext(ctx)
 	c.Header("Cache-Control", "no-store")
 	var request coworkPortalRequest
-	decoder := json.NewDecoder(http.MaxBytesReader(c.Writer, c.Request.Body, 64*1024))
+	decoder := json.NewDecoder(http.MaxBytesReader(c.Writer, c.Request.Body, 128*1024))
 	decoder.DisallowUnknownFields()
 	if decoder.Decode(&request) != nil || decoder.Decode(new(any)) != io.EOF {
 		h.fail(c, service.ErrPortalInvalid)
 		return
 	}
+	request.CoworkPortalIdentity.APIKeyIDs = request.Parameters.APIKeyIDs
 	request.Parameters.RequestID = strings.ToLower(request.Parameters.RequestID)
-	if err := h.handlers.Provisioning.service.ResolvePortalIdentity(c.Request.Context(), &request.CoworkPortalIdentity); err != nil {
+	resolve := h.handlers.Provisioning.service.ResolvePortalIdentity
+	// 后台撤权重试不依赖账号仍可登录；入口有独立Portal密钥，cowork仍校验浏览器用户权限。
+	if (request.Operation == "key.editStatus" && request.Parameters.Status == "inactive") || request.Operation == "key.detail" || (request.Operation == "operation.detail" && request.Parameters.Operation == "key.add") {
+		resolve = h.handlers.Provisioning.service.ResolvePortalCleanupIdentity
+	}
+	if err := resolve(c.Request.Context(), &request.CoworkPortalIdentity); err != nil {
 		h.fail(c, err)
 		return
 	}
@@ -114,6 +123,8 @@ func (h *CoworkPortalHandler) Handle(c *gin.Context) {
 func (h *CoworkPortalHandler) dispatch(ctx context.Context, r *coworkPortalRequest, c *gin.Context) (any, error) {
 	p := r.Parameters
 	switch r.Operation {
+	case "group.options":
+		return h.handlers.Provisioning.service.PortalModelGroups(ctx, r.CoworkPortalIdentity, p.ModelGroupIDs)
 	case "usage.summary", "usage.trend", "usage.page":
 		location, err := time.LoadLocation("Asia/Shanghai")
 		if err != nil {

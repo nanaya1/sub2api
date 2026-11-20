@@ -23,19 +23,23 @@ type ProvisioningInspectInput struct {
 // ProvisioningInspectItem 返回实际实体及授权的安全投影，不包含邮箱、密码、Key或Token
 type ProvisioningInspectItem struct {
 	ProvisioningInspectObject
-	BindingFound    bool                         `json:"binding_found"`
-	LocalID         int64                        `json:"local_id"`
-	Version         int64                        `json:"version"`
-	GroupsVersion   int64                        `json:"groups_version"`
-	BindingStatus   string                       `json:"binding_status"`
-	EntityExists    bool                         `json:"entity_exists"`
-	Deleted         bool                         `json:"deleted"`
-	Name            string                       `json:"name"`
-	Description     string                       `json:"description"`
-	Status          string                       `json:"status"`
-	Restricted      bool                         `json:"restricted"`
-	Groups          []ProvisioningGroupReference `json:"groups"`
-	UnmanagedGroups int                          `json:"unmanaged_groups"`
+	ModelGroupIDs       []int64                      `json:"model_group_ids"`
+	TenantGroupIDs      []int64                      `json:"tenant_group_ids"`
+	TenantPolicyVersion int64                        `json:"tenant_policy_version"`
+	TenantStatus        string                       `json:"tenant_status"`
+	BindingFound        bool                         `json:"binding_found"`
+	LocalID             int64                        `json:"local_id"`
+	Version             int64                        `json:"version"`
+	GroupsVersion       int64                        `json:"groups_version"`
+	BindingStatus       string                       `json:"binding_status"`
+	EntityExists        bool                         `json:"entity_exists"`
+	Deleted             bool                         `json:"deleted"`
+	Name                string                       `json:"name"`
+	Description         string                       `json:"description"`
+	Status              string                       `json:"status"`
+	Restricted          bool                         `json:"restricted"`
+	Groups              []ProvisioningGroupReference `json:"groups"`
+	UnmanagedGroups     int                          `json:"unmanaged_groups"`
 }
 
 type ProvisioningInspectResult struct {
@@ -82,7 +86,7 @@ func (s *ProvisioningService) Inspect(ctx context.Context, input ProvisioningIns
 	result := &ProvisioningInspectResult{Source: input.Source, Items: make([]ProvisioningInspectItem, 0, len(input.Objects))}
 	budget := 4000
 	for _, object := range input.Objects {
-		item := ProvisioningInspectItem{ProvisioningInspectObject: object, Groups: []ProvisioningGroupReference{}}
+		item := ProvisioningInspectItem{ProvisioningInspectObject: object, Groups: []ProvisioningGroupReference{}, ModelGroupIDs: []int64{}}
 		if object.ObjectType == "user" {
 			err = tx.QueryRowContext(ctx, `SELECT COALESCE(b.local_user_id,0),b.version,b.groups_version,b.status,
 			 u.id IS NOT NULL,COALESCE(u.deleted_at IS NOT NULL,FALSE),COALESCE(u.username,''),COALESCE(u.status,''),COALESCE(u.restrict_public_groups,FALSE)
@@ -90,11 +94,8 @@ func (s *ProvisioningService) Inspect(ctx context.Context, input ProvisioningIns
 			 WHERE b.source=$1 AND b.external_user_id=$2`, input.Source, object.ExternalID).
 				Scan(&item.LocalID, &item.Version, &item.GroupsVersion, &item.BindingStatus, &item.EntityExists, &item.Deleted, &item.Name, &item.Status, &item.Restricted)
 		} else {
-			err = tx.QueryRowContext(ctx, `SELECT COALESCE(b.local_group_id,0),b.version,b.status,
-			 g.id IS NOT NULL,COALESCE(g.deleted_at IS NOT NULL,FALSE),COALESCE(g.name,''),COALESCE(g.description,''),COALESCE(g.status,''),COALESCE(g.is_exclusive,FALSE)
-			 FROM provisioning_group_bindings b LEFT JOIN groups g ON g.id=b.local_group_id
-			 WHERE b.source=$1 AND b.tenant_key=$2 AND b.external_group_id=$3`, input.Source, object.TenantKey, object.ExternalID).
-				Scan(&item.LocalID, &item.Version, &item.BindingStatus, &item.EntityExists, &item.Deleted, &item.Name, &item.Description, &item.Status, &item.Restricted)
+			// 业务组仅在 cowork 保存，不再存在下游映射实体。
+			err = sql.ErrNoRows
 		}
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return nil, err
@@ -114,32 +115,23 @@ func (s *ProvisioningService) Inspect(ctx context.Context, input ProvisioningIns
 }
 
 func inspectProvisioningGroups(ctx context.Context, tx *sql.Tx, source string, item *ProvisioningInspectItem, budget *int) error {
-	// 不能把其他来源、已删除组或异常多映射授权静默丢弃，否则会误报一致
-	rows, err := tx.QueryContext(ctx, `SELECT COALESCE(m.tenant_key,''),COALESCE(m.external_group_id,''),
-	 (m.n=1 AND g.deleted_at IS NULL AND g.id IS NOT NULL AND m.live=1) IS TRUE
-	 FROM user_allowed_groups a LEFT JOIN groups g ON g.id=a.group_id
-	 LEFT JOIN LATERAL (SELECT COUNT(*) AS n,MIN(tenant_key) AS tenant_key,MIN(external_group_id) AS external_group_id,
-	 COUNT(*) FILTER (WHERE status!='deleted') AS live FROM provisioning_group_bindings WHERE source=$2 AND local_group_id=a.group_id) m ON TRUE
-	 WHERE a.user_id=$1 ORDER BY a.group_id LIMIT $3`, item.LocalID, source, *budget+1)
+	// 返回正式授权完整集合；企业及业务组归属由 cowork 核对，不在下游复制。
+	item.ModelGroupIDs = []int64{}
+	rows, err := tx.QueryContext(ctx, "SELECT group_id FROM user_allowed_groups WHERE user_id=$1 ORDER BY group_id LIMIT $2", item.LocalID, *budget+1)
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return err
+		}
 		*budget--
 		if *budget < 0 {
 			return ErrProvisioningInvalidRequest
 		}
-		var ref ProvisioningGroupReference
-		var managed bool
-		if err := rows.Scan(&ref.TenantKey, &ref.ExternalGroupID, &managed); err != nil {
-			return err
-		}
-		if managed {
-			item.Groups = append(item.Groups, ref)
-		} else {
-			item.UnmanagedGroups++
-		}
+		item.ModelGroupIDs = append(item.ModelGroupIDs, id)
 	}
 	return rows.Err()
 }

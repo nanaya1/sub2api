@@ -32,12 +32,15 @@ func TestCoworkPortalDatabase(t *testing.T) {
 	db.SetMaxOpenConns(12)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+	var existing int
+	require.NoError(t, db.QueryRowContext(ctx, `SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=current_schema()`).Scan(&existing))
+	require.Zero(t, existing, "only an empty disposable database is allowed")
 	schema, err := migrations.FS.ReadFile("243_cowork_portal_operations.sql")
 	require.NoError(t, err)
-	// 临时数据库只建该读取投影需要的列，历史已删除分组映射保留
+	// 临时数据库只建正式查询所需列，并复用既有243操作表迁移；企业归属仅由cowork注入。
 	_, err = db.ExecContext(ctx, `CREATE TABLE users(id BIGINT PRIMARY KEY,status TEXT,deleted_at TIMESTAMPTZ,restrict_public_groups BOOLEAN);
-      CREATE TABLE provisioning_user_bindings(source TEXT,external_user_id TEXT,local_user_id BIGINT,status TEXT);
-      CREATE TABLE groups(id BIGINT PRIMARY KEY,status TEXT,deleted_at TIMESTAMPTZ);
+      CREATE TABLE provisioning_user_bindings(source TEXT,external_user_id TEXT,local_user_id BIGINT,status TEXT,PRIMARY KEY(source,external_user_id));
+      CREATE TABLE groups(id BIGINT PRIMARY KEY,status TEXT,deleted_at TIMESTAMPTZ,name TEXT DEFAULT 'pool',platform TEXT DEFAULT 'openai',subscription_type TEXT DEFAULT 'standard');
       CREATE TABLE user_allowed_groups(user_id BIGINT,group_id BIGINT);
       CREATE TABLE provisioning_group_bindings(source TEXT,tenant_key TEXT,external_group_id TEXT,local_group_id BIGINT,status TEXT);
       CREATE TABLE api_keys(id BIGINT PRIMARY KEY,user_id BIGINT,group_id BIGINT,status TEXT,name TEXT,created_at TIMESTAMPTZ,deleted_at TIMESTAMPTZ);
@@ -45,7 +48,7 @@ func TestCoworkPortalDatabase(t *testing.T) {
 	require.NoError(t, err)
 	_, err = db.ExecContext(ctx, `INSERT INTO users VALUES(10,'active',NULL,true),(20,'active',NULL,true);
       INSERT INTO provisioning_user_bindings VALUES('cowork','7',10,'active');
-      INSERT INTO groups VALUES(30,'active',NULL),(31,'inactive',NOW()),(40,'active',NULL);
+      INSERT INTO groups(id,status,deleted_at) VALUES(30,'active',NULL),(31,'inactive',NOW()),(40,'active',NULL);
       INSERT INTO user_allowed_groups VALUES(10,30);
       INSERT INTO provisioning_group_bindings VALUES('cowork','8','9',30,'active'),('cowork','8','old',31,'deleted'),('cowork','other','9',40,'active');
       INSERT INTO api_keys VALUES(1,10,30,'active','mine',NOW(),NULL),(2,20,30,'active','other user',NOW(),NULL),(3,10,40,'active','other tenant',NOW(),NULL),(4,10,31,'inactive','old group',NOW(),NULL);
@@ -53,6 +56,8 @@ func TestCoworkPortalDatabase(t *testing.T) {
 	require.NoError(t, err)
 	svc := NewProvisioningService(db, nil, nil)
 	identity := portalTestIdentity()
+	identity.TargetGroupID = 30
+	identity.APIKeyIDs = []int64{1, 4}
 	require.NoError(t, svc.ResolvePortalIdentity(ctx, &identity))
 	require.Equal(t, int64(10), identity.UserID)
 	group, err := svc.PortalCurrentGroup(ctx, identity)

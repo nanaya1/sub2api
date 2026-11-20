@@ -15,7 +15,7 @@ import (
 
 func TestCoworkPortalRejectsInvalidEnvelopeBeforeIdentityLookup(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	for _, body := range []string{`{"unexpected":true}`, `{} {}`, `{"parameters":{"amount":"bad"}}`, strings.Repeat(" ", 65537) + `{}`} {
+	for _, body := range []string{`{"unexpected":true}`, `{} {}`, `{"parameters":{"amount":"bad"}}`, strings.Repeat(" ", 128*1024+1) + `{}`} {
 		r := gin.New()
 		h := NewCoworkPortalHandler(&Handlers{})
 		r.POST("/portal", h.Authenticate, h.Handle)

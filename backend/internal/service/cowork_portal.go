@@ -10,6 +10,7 @@ import (
 	"regexp"
 
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
+	"github.com/lib/pq"
 )
 
 var (
@@ -25,11 +26,13 @@ var (
 
 // CoworkPortalIdentity 只允许由独立服务凭据认证后解析外部稳定身份。
 type CoworkPortalIdentity struct {
-	Source          string `json:"source"`
-	ExternalUserID  string `json:"external_user_id"`
-	TenantKey       string `json:"tenant_key"`
-	ExternalGroupID string `json:"external_group_id"`
-	UserID          int64  `json:"-"`
+	Source          string  `json:"source"`
+	ExternalUserID  string  `json:"external_user_id"`
+	TenantKey       string  `json:"tenant_key"`
+	ExternalGroupID string  `json:"external_group_id"`
+	UserID          int64   `json:"-"`
+	TargetGroupID   int64   `json:"-"`
+	APIKeyIDs       []int64 `json:"-"`
 }
 
 // ResolvePortalIdentity 不按邮箱认领用户，也不自动创建同步投影。
@@ -50,17 +53,29 @@ func (s *ProvisioningService) ResolvePortalIdentity(ctx context.Context, identit
 	return nil
 }
 
+// ResolvePortalCleanupIdentity 仅供受信内部清理：账号停用/删除后仍允许确认创建结果及停用既有Key。
+// 不创建账号、不放开用户登录；普通门户调用仍使用严格身份校验。
+func (s *ProvisioningService) ResolvePortalCleanupIdentity(ctx context.Context, identity *CoworkPortalIdentity) error {
+	if identity.Source == "" || len(identity.Source) > 100 || identity.ExternalUserID == "" || len(identity.ExternalUserID) > 200 {
+		return ErrPortalInvalid
+	}
+	err := s.db.QueryRowContext(ctx, "SELECT local_user_id FROM provisioning_user_bindings WHERE source=$1 AND external_user_id=$2 AND local_user_id IS NOT NULL", identity.Source, identity.ExternalUserID).Scan(&identity.UserID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrPortalNotFound
+	}
+	if err != nil {
+		return ErrPortalUnavailable
+	}
+	return nil
+}
+
 // PortalCurrentGroup 创建Key必须绑定当前有效企业分组，并再次验证下游授权。
 func (s *ProvisioningService) PortalCurrentGroup(ctx context.Context, identity CoworkPortalIdentity) (int64, error) {
 	if identity.TenantKey == "" || identity.ExternalGroupID == "" {
 		return 0, ErrPortalNotReady
 	}
 	var id int64
-	err := s.db.QueryRowContext(ctx, `SELECT b.local_group_id FROM provisioning_group_bindings b
-        JOIN groups g ON g.id = b.local_group_id
-        JOIN user_allowed_groups a ON a.group_id = g.id AND a.user_id = $4
-        WHERE b.source = $1 AND b.tenant_key = $2 AND b.external_group_id = $3
-          AND b.status = 'active' AND g.status = 'active' AND g.deleted_at IS NULL`, identity.Source, identity.TenantKey, identity.ExternalGroupID, identity.UserID).Scan(&id)
+	err := s.db.QueryRowContext(ctx, "SELECT g.id FROM groups g JOIN user_allowed_groups u ON u.group_id=g.id WHERE u.user_id=$1 AND g.id=$2 AND g.status='active' AND g.deleted_at IS NULL AND g.platform!='composite' AND g.subscription_type='standard'", identity.UserID, identity.TargetGroupID).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, ErrPortalNotReady
 	}
@@ -72,14 +87,11 @@ func (s *ProvisioningService) PortalCurrentGroup(ctx context.Context, identity C
 
 // PortalOwnsKey 在返回明文或修改前限定本人和企业，不采用客户端传入的下游组ID。
 func (s *ProvisioningService) PortalOwnsKey(ctx context.Context, identity CoworkPortalIdentity, keyID int64) error {
-	if identity.TenantKey == "" || keyID <= 0 {
+	if identity.TenantKey == "" || keyID <= 0 || validateCoworkIDs(identity.APIKeyIDs, 4000) != nil {
 		return ErrPortalInvalid
 	}
 	var allowed bool
-	err := s.db.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM api_keys k
-        JOIN provisioning_group_bindings b ON b.local_group_id = k.group_id
-        WHERE k.id = $1 AND k.user_id = $2 AND k.deleted_at IS NULL
-          AND b.source = $3 AND b.tenant_key = $4)`, keyID, identity.UserID, identity.Source, identity.TenantKey).Scan(&allowed)
+	err := s.db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM api_keys k WHERE k.id=$1 AND k.user_id=$2 AND k.deleted_at IS NULL AND k.id=ANY($3::bigint[]))", keyID, identity.UserID, pq.Array(identity.APIKeyIDs)).Scan(&allowed)
 	if err != nil {
 		return ErrPortalUnavailable
 	}

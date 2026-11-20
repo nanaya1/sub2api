@@ -21,11 +21,7 @@ func TestProvisioningInspect(t *testing.T) {
 	mock.ExpectQuery("FROM provisioning_user_bindings").WithArgs("cowork", "7").WillReturnRows(
 		sqlmock.NewRows([]string{"id", "version", "groups_version", "binding_status", "exists", "deleted", "name", "status", "restricted"}).
 			AddRow(10, 100, 200, "active", true, false, "actual-name", "disabled", false))
-	mock.ExpectQuery("FROM user_allowed_groups").WithArgs(int64(10), "cowork", 4001).WillReturnRows(
-		sqlmock.NewRows([]string{"tenant", "external", "managed"}).AddRow("1", "11", true).AddRow("", "", false))
-	mock.ExpectQuery("FROM provisioning_group_bindings").WithArgs("cowork", "1", "11").WillReturnRows(
-		sqlmock.NewRows([]string{"id", "version", "binding_status", "exists", "deleted", "name", "description", "status", "restricted"}).
-			AddRow(20, 300, "active", true, true, "deleted-group", "", "active", true))
+	mock.ExpectQuery("FROM user_allowed_groups").WithArgs(int64(10), 4001).WillReturnRows(sqlmock.NewRows([]string{"group_id"}).AddRow(20))
 	mock.ExpectCommit()
 	result, err := svc.Inspect(context.Background(), ProvisioningInspectInput{Source: "cowork", Objects: []ProvisioningInspectObject{
 		{ObjectType: "user", ExternalID: "7"}, {ObjectType: "group", ExternalID: "11", TenantKey: "1"},
@@ -34,9 +30,9 @@ func TestProvisioningInspect(t *testing.T) {
 	require.Equal(t, "actual-name", result.Items[0].Name)
 	require.Equal(t, "disabled", result.Items[0].Status)
 	require.False(t, result.Items[0].Restricted)
-	require.Len(t, result.Items[0].Groups, 1)
-	require.Equal(t, 1, result.Items[0].UnmanagedGroups)
-	require.True(t, result.Items[1].Deleted)
+	require.Equal(t, []int64{20}, result.Items[0].ModelGroupIDs)
+	require.Zero(t, result.Items[0].UnmanagedGroups)
+	require.False(t, result.Items[1].BindingFound)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -72,9 +68,9 @@ func TestProvisioningInspectRejectsTruncatedAuthorization(t *testing.T) {
 	mock.ExpectQuery("FROM provisioning_user_bindings").WillReturnRows(
 		sqlmock.NewRows([]string{"id", "version", "groups_version", "binding_status", "exists", "deleted", "name", "status", "restricted"}).
 			AddRow(10, 100, 200, "active", true, false, "name", "active", true))
-	rows := sqlmock.NewRows([]string{"tenant", "external", "managed"})
+	rows := sqlmock.NewRows([]string{"group_id"})
 	for i := 0; i < 4001; i++ {
-		rows.AddRow("", "", false)
+		rows.AddRow(i + 1)
 	}
 	mock.ExpectQuery("FROM user_allowed_groups").WillReturnRows(rows)
 	mock.ExpectRollback()

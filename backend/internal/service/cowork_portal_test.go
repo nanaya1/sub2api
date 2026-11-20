@@ -17,7 +17,7 @@ import (
 )
 
 func portalTestIdentity() CoworkPortalIdentity {
-	return CoworkPortalIdentity{Source: "cowork", ExternalUserID: "7", TenantKey: "8", ExternalGroupID: "9", UserID: 10}
+	return CoworkPortalIdentity{Source: "cowork", ExternalUserID: "7", TenantKey: "8", ExternalGroupID: "9", UserID: 10, TargetGroupID: 20, APIKeyIDs: []int64{11}}
 }
 
 func TestCoworkPortalIdentityAndKeyIsolation(t *testing.T) {
@@ -28,9 +28,9 @@ func TestCoworkPortalIdentityAndKeyIsolation(t *testing.T) {
 	identity := portalTestIdentity()
 	mock.ExpectQuery("FROM provisioning_user_bindings").WithArgs("cowork", "7").WillReturnError(sql.ErrNoRows)
 	require.ErrorIs(t, svc.ResolvePortalIdentity(context.Background(), &identity), ErrPortalNotReady)
-	mock.ExpectQuery("FROM api_keys k").WithArgs(int64(11), int64(10), "cowork", "8").WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+	mock.ExpectQuery("FROM api_keys k").WithArgs(int64(11), int64(10), "{11}").WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
 	require.ErrorIs(t, svc.PortalOwnsKey(context.Background(), identity, 11), ErrPortalNotFound)
-	mock.ExpectQuery("FROM provisioning_group_bindings").WithArgs("cowork", "8", "9", int64(10)).WillReturnError(sql.ErrNoRows)
+	mock.ExpectQuery("FROM groups g JOIN user_allowed_groups").WithArgs(int64(10), int64(20)).WillReturnError(sql.ErrNoRows)
 	_, err = svc.PortalCurrentGroup(context.Background(), identity)
 	require.ErrorIs(t, err, ErrPortalNotReady)
 	require.NoError(t, mock.ExpectationsWereMet())

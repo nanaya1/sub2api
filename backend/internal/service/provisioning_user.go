@@ -13,6 +13,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -29,12 +30,14 @@ type ProvisioningUserUpsertInput struct {
 type ProvisioningGroupReference struct {
 	TenantKey       string `json:"tenant_key"`
 	ExternalGroupID string `json:"external_group_id"`
+	Enabled         *bool  `json:"enabled,omitempty"`
 }
 
 type ProvisioningUserGroupsInput struct {
 	Source         string
 	ExternalUserID string
 	Groups         []ProvisioningGroupReference
+	ModelGroupIDs  []int64
 	Version        int64
 }
 
@@ -130,22 +133,11 @@ func (s *ProvisioningService) ReplaceUserGroups(ctx context.Context, input Provi
 	if err := validateProvisioningUserKey(input.Source, input.ExternalUserID, input.Version); err != nil {
 		return nil, err
 	}
-	if input.Groups == nil {
+	if err := validateCoworkIDs(input.ModelGroupIDs, 4000); err != nil {
 		return nil, ErrProvisioningInvalidRequest
 	}
-	groups := append([]ProvisioningGroupReference(nil), input.Groups...)
-	for _, group := range groups {
-		if err := validateProvisioningKey(input.Source, group.TenantKey, group.ExternalGroupID); err != nil {
-			return nil, err
-		}
-	}
-	// 多个并发用户引用相同分组时按稳定顺序锁定映射，避免锁顺序反转
-	sort.Slice(groups, func(i, j int) bool {
-		if groups[i].TenantKey != groups[j].TenantKey {
-			return groups[i].TenantKey < groups[j].TenantKey
-		}
-		return groups[i].ExternalGroupID < groups[j].ExternalGroupID
-	})
+	ids := append([]int64{}, input.ModelGroupIDs...)
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 	if s == nil || s.db == nil {
 		return nil, errors.New("provisioning database is unavailable")
 	}
@@ -167,24 +159,6 @@ func (s *ProvisioningService) ReplaceUserGroups(ctx context.Context, input Provi
 	if result.Status == "deleted" || input.Version <= result.GroupsVersion {
 		return s.commitUser(ctx, tx, result)
 	}
-	localGroups := make(map[int64]struct{}, len(groups))
-	for _, group := range groups {
-		var id int64
-		var status string
-		err := tx.QueryRowContext(ctx, `SELECT COALESCE(local_group_id, 0), status FROM provisioning_group_bindings
-			WHERE source = $1 AND tenant_key = $2 AND external_group_id = $3 FOR UPDATE`,
-			input.Source, group.TenantKey, group.ExternalGroupID).Scan(&id, &status)
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrProvisioningBindingNotFound
-		}
-		if err != nil {
-			return nil, err
-		}
-		// 延迟的完整名单不能重新授予已经正式删除的分组
-		if status != "deleted" && id > 0 {
-			localGroups[id] = struct{}{}
-		}
-	}
 	// 限制公开组，确保清理掉的人工授权不会因公开组默认可用而继续生效
 	updated, err := tx.ExecContext(ctx, `UPDATE users SET restrict_public_groups = TRUE, updated_at = NOW()
 		WHERE id = $1 AND deleted_at IS NULL`, result.LocalUserID)
@@ -197,13 +171,18 @@ func (s *ProvisioningService) ReplaceUserGroups(ctx context.Context, input Provi
 	if _, err := tx.ExecContext(ctx, `DELETE FROM user_allowed_groups WHERE user_id = $1`, result.LocalUserID); err != nil {
 		return nil, err
 	}
-	ids := make([]int64, 0, len(localGroups))
-	for id := range localGroups {
-		ids = append(ids, id)
-	}
-	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	// 只替换正式模型组授权并集，不创建或修改管理员的模型组。
 	for _, id := range ids {
-		if _, err := tx.ExecContext(ctx, `INSERT INTO user_allowed_groups (user_id, group_id) VALUES ($1, $2)`, result.LocalUserID, id); err != nil {
+		var exists bool
+		if err := tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM groups WHERE id=$1 AND platform!='composite' AND subscription_type='standard')", id).Scan(&exists); err != nil {
+			return nil, err
+		}
+		if !exists {
+			return nil, ErrProvisioningBindingNotFound
+		}
+	}
+	if len(ids) > 0 {
+		if _, err := tx.ExecContext(ctx, "INSERT INTO user_allowed_groups(user_id,group_id) SELECT $1,unnest($2::bigint[])", result.LocalUserID, pq.Array(ids)); err != nil {
 			return nil, err
 		}
 	}
